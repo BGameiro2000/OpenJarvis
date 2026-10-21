@@ -70,6 +70,9 @@ jobs:
           rm -rf src/deploy/unraid
           cp -a packaging/deploy/unraid src/deploy/unraid
 
+      - name: Apply build-time patches to upstream files
+        run: sh src/deploy/unraid/patches/apply.sh src
+
       # The "docker" driver lets the second build use the locally loaded base.
       - uses: docker/setup-buildx-action@v3
         with:
