@@ -65,8 +65,13 @@ def backup_one(src: Path, dst: Path) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--home", default=os.environ.get("OPENJARVIS_HOME", "/data"))
-    ap.add_argument("--dest", default=os.environ.get("JARVIS_BACKUP_DIR", "/vault/_backups/openjarvis"))
-    ap.add_argument("--keep", type=int, default=int(os.environ.get("JARVIS_BACKUP_KEEP", "7")))
+    ap.add_argument(
+        "--dest",
+        default=os.environ.get("JARVIS_BACKUP_DIR", "/vault/_backups/openjarvis"),
+    )
+    ap.add_argument(
+        "--keep", type=int, default=int(os.environ.get("JARVIS_BACKUP_KEEP", "7"))
+    )
     args = ap.parse_args()
 
     home, dest = Path(args.home), Path(args.dest)
@@ -96,10 +101,15 @@ def main() -> int:
     (tmp_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
     tmp_dir.rename(run_dir)
 
-    runs = sorted(p for p in dest.iterdir() if p.is_dir() and not p.name.startswith("."))
+    runs = sorted(
+        p for p in dest.iterdir() if p.is_dir() and not p.name.startswith(".")
+    )
     for old in runs[: max(0, len(runs) - args.keep)]:
         shutil.rmtree(old)
-    print(f"backup: {run_dir} ({len(manifest['databases'])} databases, keeping {args.keep})")
+    print(
+        f"backup: {run_dir} ({len(manifest['databases'])} databases, "
+        f"keeping {args.keep})"
+    )
     return 0 if ok else 1
 
 

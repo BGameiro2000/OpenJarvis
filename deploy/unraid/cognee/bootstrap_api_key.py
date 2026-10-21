@@ -55,12 +55,11 @@ async def main() -> int:
     if failed:
         log("data migrations failed for: " + ", ".join(failed))
 
-    from sqlalchemy import delete, select
-
     from cognee.infrastructure.databases.relational import get_relational_engine
     from cognee.modules.users.api_key.hash_api_key import prepare_api_key
     from cognee.modules.users.methods import get_default_user
     from cognee.modules.users.models.UserApiKey import UserApiKey
+    from sqlalchemy import delete, select
 
     key = resolve_key()
     stored = prepare_api_key(key)
@@ -79,12 +78,18 @@ async def main() -> int:
         )
         if found is None:
             session.add(
-                UserApiKey(user_id=user.id, api_key=stored, label=key[:8] + "****", name=KEY_NAME)
+                UserApiKey(
+                    user_id=user.id,
+                    api_key=stored,
+                    label=key[:8] + "****",
+                    name=KEY_NAME,
+                )
             )
         await session.commit()
     if stale.rowcount:
         log(f"removed {stale.rowcount} old unraid key(s)")
-    log(f"API key {'registered' if found is None else 'already registered'} for {user.email}")
+    state = "registered" if found is None else "already registered"
+    log(f"API key {state} for {user.email}")
     return 0
 
 

@@ -116,11 +116,15 @@ class CogneeRecallTool(BaseTool):
         s = _settings()
         query = str(params.get("query", "")).strip()
         if not query:
-            return ToolResult(tool_name="cognee_recall", content="Empty query.", success=False)
+            return ToolResult(
+                tool_name="cognee_recall", content="Empty query.", success=False
+            )
         top_k = int(params.get("top_k") or s["top_k"])
         sections: list[str] = []
         try:
-            with httpx.Client(timeout=s["timeout"], headers=_headers(s["key"])) as client:
+            with httpx.Client(
+                timeout=s["timeout"], headers=_headers(s["key"])
+            ) as client:
                 # Graph context without the answer: no LLM call inside Cognee.
                 # CHUNKS is retrieval only and carries the source documents.
                 for search_type, extra in (
@@ -179,9 +183,13 @@ class CogneeRememberTool(BaseTool):
         s = _settings()
         text = str(params.get("text", "")).strip()
         if not text:
-            return ToolResult(tool_name="cognee_remember", content="Empty text.", success=False)
+            return ToolResult(
+                tool_name="cognee_remember", content="Empty text.", success=False
+            )
         try:
-            with httpx.Client(timeout=s["timeout"], headers=_headers(s["key"])) as client:
+            with httpx.Client(
+                timeout=s["timeout"], headers=_headers(s["key"])
+            ) as client:
                 resp = client.post(
                     f"{s['url']}/api/v1/add",
                     data={"datasetName": s["dataset"], "raw_data": [text]},

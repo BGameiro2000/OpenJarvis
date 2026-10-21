@@ -8,10 +8,10 @@ embedded graph database is only ever opened by the server.
     docker exec cognee cognee-ingest              # add new, update changed, cognify
     docker exec cognee cognee-ingest --no-cognify # upload only
 
-What is read: *.md files under /vault except AGENTS.md. Skipped: hidden folders (.obsidian,
-.trash, .git), _backups/, personas/, and every folder named in COGNEE_EXCLUDE
-(comma separated, a folder name or a path relative to the vault, for example
-"inbox,daily/private").
+What is read: *.md files under /vault except AGENTS.md. Skipped: hidden
+folders (.obsidian, .trash, .git), _backups/, personas/, and every folder
+named in COGNEE_EXCLUDE (comma separated, a folder name or a path relative to
+the vault, for example "inbox,daily/private").
 
 What is sent to Anthropic: during cognify, the text of every new or changed
 note is sent to the LLM for entity and summary extraction. Embeddings are
@@ -78,8 +78,12 @@ def walk_vault() -> dict[str, Path]:
         dirnames[:] = sorted(keep)
         for f in sorted(filenames):
             p = Path(dirpath) / f
-            if (p.suffix.lower() in SUFFIXES and f not in SKIP_FILES
-                    and not f.startswith(".") and p.is_file()):
+            if (
+                p.suffix.lower() in SUFFIXES
+                and f not in SKIP_FILES
+                and not f.startswith(".")
+                and p.is_file()
+            ):
                 found[p.relative_to(VAULT).as_posix()] = p
     return found
 
@@ -134,11 +138,17 @@ def estimate(new: list, changed: list, same: list, gone: list) -> None:
     names, paths = excluded_dirs()
     log(f"vault: {VAULT}  dataset: {DATASET}")
     log(f"skipped folders: {', '.join(sorted(names | paths))} and hidden folders")
-    log(f"files: {len(new)} new, {len(changed)} changed, {len(same)} unchanged, {len(gone)} deleted")
+    log(
+        f"files: {len(new)} new, {len(changed)} changed, "
+        f"{len(same)} unchanged, {len(gone)} deleted"
+    )
     log(f"tokens to process: {tokens}")
     log(f"estimated LLM usage: {tin:,.0f} input + {tout:,.0f} output tokens")
-    log(f"estimated cost: ${cost:,.2f} at ${PRICE_IN}/M in, ${PRICE_OUT}/M out "
-        f"(x{COGNIFY_PASSES} input passes; set COGNEE_PRICE_*_PER_MTOK for other models)")
+    log(
+        f"estimated cost: ${cost:,.2f} at ${PRICE_IN}/M in, ${PRICE_OUT}/M out "
+        f"(x{COGNIFY_PASSES} input passes; "
+        "set COGNEE_PRICE_*_PER_MTOK for other models)"
+    )
     log("nothing was sent")
 
 
@@ -147,11 +157,15 @@ class Api:
         import httpx
 
         self.httpx = httpx
-        self.client = httpx.Client(base_url=API, headers={"X-Api-Key": key}, timeout=None)
+        self.client = httpx.Client(
+            base_url=API, headers={"X-Api-Key": key}, timeout=None
+        )
 
     def check(self, resp, what: str):
         if resp.status_code >= 400:
-            raise SystemExit(f"{what} failed: HTTP {resp.status_code} {resp.text[:400]}")
+            raise SystemExit(
+                f"{what} failed: HTTP {resp.status_code} {resp.text[:400]}"
+            )
         return resp
 
     def dataset_id(self) -> str | None:
@@ -165,8 +179,10 @@ class Api:
         out, offset = {}, 0
         while True:
             r = self.check(
-                self.client.get(f"/api/v1/datasets/{dataset_id}/data",
-                                params={"limit": 1000, "offset": offset}),
+                self.client.get(
+                    f"/api/v1/datasets/{dataset_id}/data",
+                    params={"limit": 1000, "offset": offset},
+                ),
                 "list data",
             )
             rows = r.json()
@@ -222,9 +238,19 @@ def api_key() -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Ingest the vault into Cognee.")
-    ap.add_argument("--estimate", action="store_true", help="print counts, tokens and cost; send nothing")
-    ap.add_argument("--no-cognify", action="store_true", help="upload only, do not build the graph")
-    ap.add_argument("--prune", action="store_true", help="remove notes deleted from the vault from Cognee")
+    ap.add_argument(
+        "--estimate",
+        action="store_true",
+        help="print counts, tokens and cost; send nothing",
+    )
+    ap.add_argument(
+        "--no-cognify", action="store_true", help="upload only, do not build the graph"
+    )
+    ap.add_argument(
+        "--prune",
+        action="store_true",
+        help="remove notes deleted from the vault from Cognee",
+    )
     args = ap.parse_args()
 
     os.umask(0o077)
@@ -249,10 +275,15 @@ def main() -> int:
         log(f"FAILED  {what}: HTTP {resp.status_code} {resp.text[:300]}")
         return True
 
-    log(f"files: {len(new)} new, {len(changed)} changed, {len(same)} unchanged (skipped), {len(gone)} deleted")
+    log(
+        f"files: {len(new)} new, {len(changed)} changed, "
+        f"{len(same)} unchanged (skipped), {len(gone)} deleted"
+    )
     for rel, p, digest in new:
         r = api.add(rel, p)
-        if r.status_code == 409:  # already in Cognee with other content: treat as changed
+        if (
+            r.status_code == 409
+        ):  # already in Cognee with other content: treat as changed
             changed.append((rel, p, digest))
             continue
         if failed(r, f"add {rel}"):
@@ -286,7 +317,10 @@ def main() -> int:
             log(f"FAILED  update {rel}: no Cognee id known")
             continue
         if args.no_cognify:
-            log(f"pending {rel} (changed; updating needs the LLM, skipped by --no-cognify)")
+            log(
+                f"pending {rel} (changed; updating needs the LLM, "
+                "skipped by --no-cognify)"
+            )
             continue
         if failed(api.update(rel, p, data_id, dataset_id), f"update {rel}"):
             continue
@@ -304,8 +338,10 @@ def main() -> int:
             log("cognify: done")
     elif not pending:
         log("nothing to cognify")
-    log(f"finished in {time.time() - started:.0f}s, {len(errors)} error(s)"
-        + ("; failed items are retried on the next run" if errors else ""))
+    log(
+        f"finished in {time.time() - started:.0f}s, {len(errors)} error(s)"
+        + ("; failed items are retried on the next run" if errors else "")
+    )
     return 1 if errors else 0
 
 

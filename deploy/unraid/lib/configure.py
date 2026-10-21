@@ -49,12 +49,16 @@ def first_start(cfg_path: Path, vault: Path) -> None:
         doc = tomlkit.parse(cfg_path.read_text(encoding="utf-8"))
     else:
         doc = tomlkit.document()
-        doc.add(tomlkit.comment("OpenJarvis configuration (written by openjarvis-unraid)"))
+        doc.add(
+            tomlkit.comment("OpenJarvis configuration (written by openjarvis-unraid)")
+        )
 
     choice = pick_engine()
     if choice is None:
-        log("WARNING: no ANTHROPIC_API_KEY, MISTRAL_API_KEY or OPENAI_API_KEY set; "
-            "the server will refuse to start until one is set")
+        log(
+            "WARNING: no ANTHROPIC_API_KEY, MISTRAL_API_KEY or OPENAI_API_KEY set; "
+            "the server will refuse to start until one is set"
+        )
         choice = PROVIDERS[0][1], PROVIDERS[0][2]
     engine, model = choice
 
@@ -118,8 +122,17 @@ def check(cfg_path: Path, vault: Path) -> None:
     enabled = doc.get("tools", {}).get("enabled", [])
     if isinstance(enabled, str):
         enabled = [t.strip() for t in enabled.split(",")]
-    risky = sorted(set(enabled) & {"shell_exec", "code_interpreter", "repl",
-                                   "file_write", "http_request", "git_commit"})
+    risky = sorted(
+        set(enabled)
+        & {
+            "shell_exec",
+            "code_interpreter",
+            "repl",
+            "file_write",
+            "http_request",
+            "git_commit",
+        }
+    )
     if risky:
         warn.append(f"[tools] enabled includes {', '.join(risky)}")
     mf_path = doc.get("memory_files", {}).get("memory_path", "")
@@ -128,8 +141,10 @@ def check(cfg_path: Path, vault: Path) -> None:
     engines = doc.get("engine", {})
     for local in ("uzu", "vllm"):
         if engines.get(local, {}).get("host", "") in ("", "http://localhost:8000"):
-            warn.append(f"[engine.{local}] host is unset; it defaults to this server "
-                        f'(add host = "http://127.0.0.1:9")')
+            warn.append(
+                f"[engine.{local}] host is unset; it defaults to this server "
+                f'(add host = "http://127.0.0.1:9")'
+            )
     for w in warn:
         log(f"WARNING: {w}")
     if pick_engine() is None:
