@@ -35,7 +35,6 @@ ENV HOME=/cognee-data/home \
     TIKTOKEN_CACHE_DIR=/cognee-data/models/tiktoken \
     TELEMETRY_DISABLED=1 \
     LITELLM_LOCAL_MODEL_COST_MAP=True \
-    LLM_PROVIDER=anthropic \
     EMBEDDING_PROVIDER=fastembed \
     EMBEDDING_MODEL=BAAI/bge-small-en-v1.5 \
     EMBEDDING_DIMENSIONS=384 \

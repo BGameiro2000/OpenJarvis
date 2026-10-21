@@ -82,7 +82,7 @@ cp deploy/unraid/templates/*.xml /boot/config/plugins/dockerMan/templates-user/
 
 Order: network (above), **Cognee first**, then OpenJarvis.
 
-1. **cognee**: set `ANTHROPIC_API_KEY`. Leave `COGNEE_API_KEY` blank to have one
+1. **cognee**: set `ANTHROPIC_API_KEY` or `MISTRAL_API_KEY`. Leave `COGNEE_API_KEY` blank to have one
    generated; copy it from the container log (shown once, also in
    `/mnt/cache/appdata/cognee/.api_key`). First start downloads the CPU embedding
    model (about 67 MB) into `/cognee-data`; the container becomes healthy after that.
@@ -110,8 +110,11 @@ OpenJarvis:
 | `OPENJARVIS_OLLAMA_HOST` | blank | Optional remote Ollama, passed on as `OLLAMA_HOST`. |
 | `OPENJARVIS_CUSTOM_MODULES` | blank | Modules in `/data/custom` imported before the server starts. |
 
-Cognee: `ANTHROPIC_API_KEY`, `COGNEE_LLM_MODEL` (default `claude-sonnet-5-5`;
-`claude-haiku-5-5` is cheaper), `COGNEE_API_KEY`, `COGNEE_EXCLUDE`, `TZ`.
+Cognee: `ANTHROPIC_API_KEY` or `MISTRAL_API_KEY` (Anthropic wins if both are
+set; `COGNEE_LLM_PROVIDER=mistral` forces Mistral), `COGNEE_LLM_MODEL` (blank:
+`claude-sonnet-5-5` or `mistral-medium-latest`), `COGNEE_API_KEY`,
+`COGNEE_EXCLUDE`, `TZ`. For `--estimate` with Mistral prices, set
+`COGNEE_PRICE_IN_PER_MTOK` and `COGNEE_PRICE_OUT_PER_MTOK`.
 
 ## First run: what happens
 
@@ -140,9 +143,9 @@ docker exec cognee cognee-ingest --estimate   # file count, tokens, cost; sends 
 docker exec cognee cognee-ingest              # add new, update changed, build graph
 ```
 
-**Privacy**: ingestion sends the text of every new or changed note to Anthropic
-for entity extraction. Embeddings run on your CPU. Asking questions (recall) sends
-nothing to Anthropic from Cognee: OpenJarvis asks Cognee for context only, then
+**Privacy**: ingestion sends the text of every new or changed note to the LLM
+provider (Anthropic or Mistral) for entity extraction. Embeddings run on your CPU.
+Asking questions (recall) sends nothing to the LLM from Cognee: OpenJarvis asks Cognee for context only, then
 makes its own single LLM call. Exclude folders you do not want sent with
 `COGNEE_EXCLUDE`.
 

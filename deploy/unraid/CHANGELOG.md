@@ -20,6 +20,7 @@ Images: `openjarvis-unraid:0.0.1.dev88-cf464de-u1` (OpenJarvis commit
   - Cognee uses a thin layer over the official image (UID 99, data paths, key
     bootstrap, ingest), not the bare official image.
   - Cognee pinned to 1.6.5 (latest stable), not 1.6.1.
+  - Cognee can use Mistral as well as Anthropic for ingestion (spec: Anthropic only).
   - The API key command upstream is `jarvis auth create-key`; the entrypoint uses
     the same generator (`generate_api_key`) and stores the key in `/data/.api_key`.
   - `OPENJARVIS_PORT`, `OPENJARVIS_ENGINE_DEFAULT`, `OPENJARVIS_OLLAMA_HOST` do not

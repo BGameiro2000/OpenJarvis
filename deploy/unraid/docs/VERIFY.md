@@ -217,8 +217,9 @@ every database on the cache pool.
 
 **V11. LLM and embeddings env**
 
-- LLM: `LLM_PROVIDER=anthropic`, `LLM_MODEL` (the `anthropic/` prefix is
-  optional), `LLM_API_KEY`.
+- LLM: `LLM_PROVIDER` (`anthropic` or `mistral` among others), `LLM_MODEL`
+  (Anthropic: prefix optional; Mistral: `mistral/<model>`, sent through litellm),
+  `LLM_API_KEY`.
 - Embeddings: `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`.
   Default is OpenAI. CPU option with no Ollama: `EMBEDDING_PROVIDER=fastembed`
   (fastembed is a core dependency). Cognee's own local default is
@@ -287,7 +288,10 @@ every database on the cache pool.
    when `MISTRAL_API_KEY` is set; else `cloud` with `gpt-5` when only
    `OPENAI_API_KEY` is set. Model IDs are upstream's known ones; change
    `[intelligence] default_model` in `/data/config.toml` to pick another.
-3. Cognee LLM default: `claude-sonnet-5-5` (mid tier). Override with `COGNEE_LLM_MODEL`.
+3. Cognee LLM: Anthropic `claude-sonnet-5-5` (mid tier) when `ANTHROPIC_API_KEY` is
+   set, else Mistral `mistral/mistral-medium-latest` (Cognee's native `mistral`
+   provider, through litellm; the official image has the `mistral` extra).
+   `COGNEE_LLM_PROVIDER` and `COGNEE_LLM_MODEL` override.
 4. `[tools] enabled` is set to `think, calculator, web_search, memory_manage,
    cognee_recall`. No shell, code, file write or HTTP tools.
 5. `[server] agent` stays `orchestrator` (upstream default, tool capable).

@@ -33,10 +33,32 @@ for f in src.iterdir():
         shutil.copyfile(f, dst / f.name)
 PY
 
-# Anthropic key: template passes ANTHROPIC_API_KEY; Cognee reads LLM_API_KEY.
-export LLM_API_KEY="${LLM_API_KEY:-${ANTHROPIC_API_KEY:-}}"
-export LLM_MODEL="${LLM_MODEL:-${COGNEE_LLM_MODEL:-claude-sonnet-5-5}}"
-[ -n "$LLM_API_KEY" ] || log "WARNING: no ANTHROPIC_API_KEY; search works, but ingestion (cognify) will fail"
+# LLM for ingestion: Anthropic or Mistral, from whichever key is set
+# (COGNEE_LLM_PROVIDER forces one). Cognee itself reads LLM_PROVIDER,
+# LLM_MODEL and LLM_API_KEY.
+provider="${COGNEE_LLM_PROVIDER:-${LLM_PROVIDER:-}}"
+if [ -z "$provider" ]; then
+    if [ -n "${ANTHROPIC_API_KEY:-}" ]; then provider=anthropic
+    elif [ -n "${MISTRAL_API_KEY:-}" ]; then provider=mistral
+    else provider=anthropic
+    fi
+fi
+case "$provider" in
+    anthropic)
+        export LLM_API_KEY="${LLM_API_KEY:-${ANTHROPIC_API_KEY:-}}"
+        default_model=claude-sonnet-5-5 ;;
+    mistral)
+        export LLM_API_KEY="${LLM_API_KEY:-${MISTRAL_API_KEY:-}}"
+        export MISTRAL_API_KEY="${MISTRAL_API_KEY:-$LLM_API_KEY}"
+        default_model=mistral/mistral-medium-latest ;;
+    *) die "COGNEE_LLM_PROVIDER must be anthropic or mistral, not '$provider'" ;;
+esac
+export LLM_PROVIDER="$provider"
+export LLM_MODEL="${LLM_MODEL:-${COGNEE_LLM_MODEL:-$default_model}}"
+if [ "$provider" = mistral ] && [ "${LLM_MODEL#mistral/}" = "$LLM_MODEL" ]; then
+    export LLM_MODEL="mistral/$LLM_MODEL"
+fi
+[ -n "$LLM_API_KEY" ] || log "WARNING: no ANTHROPIC_API_KEY or MISTRAL_API_KEY; search works, but ingestion (cognify) will fail"
 
 if [ -n "${COGNEE_ALLOW_VAULT_WRITE:-}" ]; then :; elif touch /vault/.cognee-write-test 2>/dev/null; then
     rm -f /vault/.cognee-write-test

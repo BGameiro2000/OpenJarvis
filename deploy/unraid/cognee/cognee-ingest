@@ -13,8 +13,8 @@ folders (.obsidian, .trash, .git), _backups/, personas/, and every folder
 named in COGNEE_EXCLUDE (comma separated, a folder name or a path relative to
 the vault, for example "inbox,daily/private").
 
-What is sent to Anthropic: during cognify, the text of every new or changed
-note is sent to the LLM for entity and summary extraction. Embeddings are
+What is sent to the LLM provider (Anthropic or Mistral): during cognify, the
+text of every new or changed note, for entity and summary extraction. Embeddings are
 computed locally on CPU.
 
 State: /cognee-data/ingest-state.json remembers each file's sha256 and Cognee

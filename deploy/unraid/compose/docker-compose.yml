@@ -26,9 +26,11 @@ services:
     image: ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u1
     container_name: cognee
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       COGNEE_API_KEY: ${COGNEE_API_KEY:-}
-      COGNEE_LLM_MODEL: ${COGNEE_LLM_MODEL:-claude-sonnet-5-5}
+      COGNEE_LLM_PROVIDER: ${COGNEE_LLM_PROVIDER:-}
+      COGNEE_LLM_MODEL: ${COGNEE_LLM_MODEL:-}
       COGNEE_EXCLUDE: ${COGNEE_EXCLUDE:-}
       TZ: ${TZ:-Europe/Madrid}
     volumes:
