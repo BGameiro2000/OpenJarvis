@@ -87,11 +87,12 @@ docker exec "$OJ" python3 -c 'import os,httpx; r=httpx.get(os.environ["COGNEE_UR
 # --- Ingestion ----------------------------------------------------------------
 est=$(docker exec "$CG" cognee-ingest --estimate)
 echo "$est"
-grep -q 'files: 3 new' <<<"$est" && grep -q 'nothing was sent' <<<"$est" && pass "15 estimate counts 3 notes and sends nothing" || fail "15 estimate"
+# 3 sample notes + SOUL.md, MEMORY.md, USER.md seeded by OpenJarvis
+grep -q 'files: 6 new' <<<"$est" && grep -q 'nothing was sent' <<<"$est" && pass "15 estimate counts 6 notes and sends nothing" || fail "15 estimate"
 docker exec "$CG" cognee-ingest || fail "16 cognee-ingest (keyless)"
-pass "16 ingest of 3 linked notes (keyless)"
+pass "16 ingest of 3 linked notes plus memory files (keyless)"
 again=$(docker exec "$CG" cognee-ingest)
-grep -q '3 unchanged' <<<"$again" && grep -q 'nothing to cognify' <<<"$again" && pass "16 unchanged notes skipped on re-run" || fail "16 re-run: $again"
+grep -q '0 new, 0 changed' <<<"$again" && grep -q 'nothing to cognify' <<<"$again" && pass "16 unchanged notes skipped on re-run" || fail "16 re-run: $again"
 
 # --- Recall through the OpenJarvis tool -----------------------------------------
 out=$(recall "Who reviews the Unraid Jarvis project?")
