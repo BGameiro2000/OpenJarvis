@@ -180,13 +180,15 @@ def create_app(
             m = mode()
             if m == "demo":
                 q = hub.attach()
+                # The turn runs on even if this browser goes away mid turn.
                 task = asyncio.create_task(demo.run_turn(text))
+                runtime.setdefault("tasks", set()).add(task)
+                task.add_done_callback(runtime["tasks"].discard)
                 try:
                     async for ev in stream_until_end(q):
                         yield _sse(ev)
                 finally:
                     hub.detach(q)
-                    await task
                 return
             if m == "floor":
                 try:
