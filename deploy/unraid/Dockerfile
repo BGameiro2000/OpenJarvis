@@ -15,8 +15,9 @@ FROM ${BASE_IMAGE}
 ARG OPENJARVIS_COMMIT=unknown
 ARG OPENJARVIS_VERSION=unknown
 ARG UNRAID_LAYER_VERSION=dev
-# Set to 1 only when building behind a TLS-intercepting proxy.
-ARG UV_NATIVE_TLS=
+# Set to 1 only when building behind a TLS-intercepting proxy (uv then uses
+# the system CA store). Unset by default: uv rejects an empty UV_NATIVE_TLS.
+ARG USE_SYSTEM_CERTS
 
 LABEL org.opencontainers.image.title="openjarvis-unraid" \
       org.opencontainers.image.description="OpenJarvis (jarvis serve) packaged for Unraid: UID 99, /data on cache, markdown memory in /vault" \
@@ -33,6 +34,7 @@ USER root
 # (hash checked, no re-resolution). Packages the base already has are no-ops.
 COPY pyproject.toml uv.lock README.md /tmp/oj-lock/
 RUN set -eu; export LITELLM_LOCAL_MODEL_COST_MAP=True; \
+    if [ -n "${USE_SYSTEM_CERTS:-}" ]; then export UV_NATIVE_TLS=1; fi; \
     cd /tmp/oj-lock; \
     py="$(python3 -c 'import sys; print(sys.prefix)')/bin/python3"; \
     uv export --frozen --no-dev --no-emit-project \
