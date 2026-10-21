@@ -330,7 +330,19 @@ def main() -> int:
 
     pending = [rel for rel, e in state["files"].items() if not e.get("cognified")]
     if pending and not args.no_cognify:
-        log(f"cognify: {len(pending)} file(s), this sends their text to the LLM ...")
+        # docker exec sees the container's -e variables, not the entrypoint's
+        # exports, so look at the provider keys the template sets.
+        has_key = any(
+            os.environ.get(k)
+            for k in ("LLM_API_KEY", "ANTHROPIC_API_KEY", "MISTRAL_API_KEY")
+        )
+        local = os.environ.get("GRAPH_EXTRACTOR") == "gliner_demo" or not has_key
+        where = (
+            "keyless: local extraction, nothing leaves the server"
+            if local
+            else "this sends their text to the LLM provider"
+        )
+        log(f"cognify: {len(pending)} file(s), {where} ...")
         if not failed(api.cognify(), "cognify"):
             for rel in pending:
                 state["files"][rel]["cognified"] = True
