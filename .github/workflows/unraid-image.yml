@@ -86,7 +86,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build base image (upstream Dockerfile, unmodified)
+      - name: Build base image (upstream Dockerfile plus patches/)
         uses: docker/build-push-action@v6
         with:
           context: src
@@ -216,7 +216,7 @@ jobs:
           test "$(docker exec cg curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/v1/datasets)" = 401
           test "$(docker exec cg curl -s -o /dev/null -w '%{http_code}' -H 'X-Api-Key: smoke-test-key' http://localhost:8000/api/v1/datasets)" = 200
           docker exec cg cognee-ingest --estimate
-          ! docker exec cg touch /vault/should-fail
+          if docker exec cg touch /vault/should-fail; then echo "vault is writable"; exit 1; fi
           docker logs cg 2>&1 | tail -30
 
       - name: Push
