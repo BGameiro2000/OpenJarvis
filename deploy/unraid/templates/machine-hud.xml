@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>machine-hud</Name>
+  <Repository>ghcr.io/bgameiro2000/machine-hud:0.1.0</Repository>
+  <Registry>https://github.com/BGameiro2000/OpenJarvis/pkgs/container/machine-hud</Registry>
+  <Network>jarvis-net</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/BGameiro2000/OpenJarvis/issues</Support>
+  <Project>https://github.com/BGameiro2000/OpenJarvis/tree/main/deploy/unraid/hud</Project>
+  <Overview>The Machine HUD: a screen for the OpenJarvis and Cognee containers. Shows Finch and Root, who holds the floor, every interjection, build, aside and raised hand, and a live decision log. The browser never holds a key: this container talks to OpenJarvis and Cognee on jarvis-net with the keys you set here.&#xD;
+&#xD;
+Install after OpenJarvis and Cognee. Set HUD_PASSWORD (login) or put it behind tailscale serve with HUD_AUTH=tailscale. HUD_DEMO=1 runs a scripted floor with no upstream and no key, to try the screen first.</Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/BGameiro2000/OpenJarvis/main/deploy/unraid/templates/machine-hud.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/BGameiro2000/OpenJarvis/main/deploy/unraid/hud/frontend/public/icon.svg</Icon>
+  <ExtraParams>--user=99:100 --security-opt=no-new-privileges --cap-drop=ALL --read-only --tmpfs /tmp:size=16m --restart=unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>OpenJarvis and Cognee on network jarvis-net. The OpenJarvis API key (from its log or /mnt/cache/appdata/openjarvis/.api_key).</Requires>
+  <Config Name="Web UI port" Target="8080" Default="8080" Mode="tcp" Description="HUD port. LAN and Tailscale only; do not forward it to the internet." Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="Vault (read only)" Target="/vault" Default="/mnt/user/TheMachine" Mode="ro" Description="The markdown vault, read-only. Used by the intake and memory views (later steps). The HUD never writes to it." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/TheMachine</Config>
+  <Config Name="OPENJARVIS_API_KEY" Target="OPENJARVIS_API_KEY" Default="" Mode="" Description="The OpenJarvis API key. Stays in this container; the browser never sees it." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="COGNEE_API_KEY" Target="COGNEE_API_KEY" Default="" Mode="" Description="The Cognee API key (from the Cognee log or /mnt/cache/appdata/cognee)." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="HUD_AUTH" Target="HUD_AUTH" Default="basic|tailscale|off" Mode="" Description="basic: login with HUD_USER and HUD_PASSWORD. tailscale: trust the Tailscale-User-Login header from tailscale serve. off: no login (LAN only). Blank: basic if HUD_PASSWORD is set, else off." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="HUD_USER" Target="HUD_USER" Default="bernardo" Mode="" Description="Login name for HUD_AUTH=basic." Type="Variable" Display="always" Required="false" Mask="false">bernardo</Config>
+  <Config Name="HUD_PASSWORD" Target="HUD_PASSWORD" Default="" Mode="" Description="Login password for HUD_AUTH=basic." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="HUD_DEMO" Target="HUD_DEMO" Default="0" Mode="" Description="1: scripted Finch and Root, no upstream calls, no key, no cost." Type="Variable" Display="always" Required="false" Mask="false">0</Config>
+  <Config Name="OPENJARVIS_URL" Target="OPENJARVIS_URL" Default="http://openjarvis:8000" Mode="" Description="OpenJarvis on jarvis-net." Type="Variable" Display="advanced" Required="false" Mask="false">http://openjarvis:8000</Config>
+  <Config Name="COGNEE_URL" Target="COGNEE_URL" Default="http://cognee:8000" Mode="" Description="Cognee on jarvis-net." Type="Variable" Display="advanced" Required="false" Mask="false">http://cognee:8000</Config>
+  <Config Name="HUD_OWNER" Target="HUD_OWNER" Default="Bernardo" Mode="" Description="Name in the top bar." Type="Variable" Display="advanced" Required="false" Mask="false">Bernardo</Config>
+  <Config Name="TZ" Target="TZ" Default="Europe/Madrid" Mode="" Description="Time zone for timestamps." Type="Variable" Display="advanced" Required="false" Mask="false">Europe/Madrid</Config>
+</Container>
