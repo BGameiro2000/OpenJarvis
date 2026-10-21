@@ -34,38 +34,47 @@ for f in src.iterdir():
 PY
 
 # LLM for ingestion: Anthropic or Mistral, from whichever key is set
-# (COGNEE_LLM_PROVIDER forces one). Cognee itself reads LLM_PROVIDER,
-# LLM_MODEL and LLM_API_KEY.
+# (COGNEE_LLM_PROVIDER forces one). With no key at all Cognee runs keyless:
+# entities are extracted by a local GLiNER model and no note text leaves the
+# box. Cognee itself reads LLM_PROVIDER, LLM_MODEL and LLM_API_KEY.
 provider="${COGNEE_LLM_PROVIDER:-${LLM_PROVIDER:-}}"
 if [ -z "$provider" ]; then
     if [ -n "${ANTHROPIC_API_KEY:-}" ]; then provider=anthropic
     elif [ -n "${MISTRAL_API_KEY:-}" ]; then provider=mistral
-    else provider=anthropic
+    else provider=none
     fi
 fi
 case "$provider" in
     anthropic)
-        export LLM_API_KEY="${LLM_API_KEY:-${ANTHROPIC_API_KEY:-}}"
+        key="${LLM_API_KEY:-${ANTHROPIC_API_KEY:-}}"
         default_model=claude-sonnet-5-5 ;;
     mistral)
-        export LLM_API_KEY="${LLM_API_KEY:-${MISTRAL_API_KEY:-}}"
-        export MISTRAL_API_KEY="${MISTRAL_API_KEY:-$LLM_API_KEY}"
+        key="${LLM_API_KEY:-${MISTRAL_API_KEY:-}}"
+        [ -n "$key" ] && export MISTRAL_API_KEY="${MISTRAL_API_KEY:-$key}"
         default_model=mistral/mistral-medium-latest ;;
+    none) key="" ;;
     *) die "COGNEE_LLM_PROVIDER must be anthropic or mistral, not '$provider'" ;;
 esac
-export LLM_PROVIDER="$provider"
-export LLM_MODEL="${LLM_MODEL:-${COGNEE_LLM_MODEL:-$default_model}}"
-if [ "$provider" = mistral ] && [ "${LLM_MODEL#mistral/}" = "$LLM_MODEL" ]; then
-    export LLM_MODEL="mistral/$LLM_MODEL"
+# Empty LLM_* values would count as configured; set them only with a key.
+unset LLM_PROVIDER LLM_MODEL LLM_API_KEY
+if [ -n "$key" ]; then
+    export LLM_PROVIDER="$provider" LLM_API_KEY="$key"
+    export LLM_MODEL="${COGNEE_LLM_MODEL:-$default_model}"
+    if [ "$provider" = mistral ] && [ "${LLM_MODEL#mistral/}" = "$LLM_MODEL" ]; then
+        export LLM_MODEL="mistral/$LLM_MODEL"
+    fi
+    llm_desc="LLM ${LLM_PROVIDER}/${LLM_MODEL}"
+else
+    [ "$provider" = none ] || log "WARNING: COGNEE_LLM_PROVIDER=$provider but its key is empty"
+    llm_desc="no LLM key: keyless ingestion with local GLiNER (${GRAPH_EXTRACTOR:-auto})"
 fi
-[ -n "$LLM_API_KEY" ] || log "WARNING: no ANTHROPIC_API_KEY or MISTRAL_API_KEY; search works, but ingestion (cognify) will fail"
 
 if [ -n "${COGNEE_ALLOW_VAULT_WRITE:-}" ]; then :; elif touch /vault/.cognee-write-test 2>/dev/null; then
     rm -f /vault/.cognee-write-test
     log "WARNING: /vault is writable. Mount it read-only (Access Mode: Read Only)."
 fi
 
-log "cognee $(python -c 'import importlib.metadata as m; print(m.version("cognee"))'), uid=$(id -u) gid=$(id -g), LLM ${LLM_PROVIDER}/${LLM_MODEL}, embeddings ${EMBEDDING_PROVIDER}/${EMBEDDING_MODEL}, TZ=${TZ:-unset}"
+log "cognee $(python -c 'import importlib.metadata as m; print(m.version("cognee"))'), uid=$(id -u) gid=$(id -g), ${llm_desc}, embeddings ${EMBEDDING_PROVIDER}/${EMBEDDING_MODEL}, TZ=${TZ:-unset}"
 
 # Fetch the CPU embedding model once, before the server starts. Inside the
 # server the download blocks the only worker (and /health) for minutes.
@@ -88,6 +97,24 @@ print("[cognee-unraid] embedding model ready", file=sys.stderr)
 PY
     then
         die "could not download the embedding model ${EMBEDDING_MODEL} (needs huggingface.co or storage.googleapis.com). The container will retry on restart."
+    fi
+fi
+
+# Keyless ingestion (or GRAPH_EXTRACTOR=gliner_demo) loads a GLiNER model from
+# Hugging Face on first cognify; fetch it now, into /cognee-data, for the
+# same reason as the embedding model.
+if { [ -z "$key" ] || [ "${GRAPH_EXTRACTOR:-}" = gliner_demo ]; } && [ -z "${COGNEE_SKIP_MODEL_PREFETCH:-}" ]; then
+    if ! timeout "${COGNEE_MODEL_DOWNLOAD_TIMEOUT:-900}" python - <<'PY'
+import os, sys
+from cognee.tasks.graph.gliner_demo.extractor import DEFAULT_MODEL
+from huggingface_hub import snapshot_download
+model = DEFAULT_MODEL
+print(f"[cognee-unraid] GLiNER model {model}: checking cache", file=sys.stderr, flush=True)
+path = snapshot_download(model)
+print(f"[cognee-unraid] GLiNER model ready in {path}", file=sys.stderr)
+PY
+    then
+        log "WARNING: could not fetch the GLiNER model; keyless ingestion will fail until it can"
     fi
 fi
 
