@@ -1,0 +1,63 @@
+# Optional: OpenJarvis + Cognee for the Unraid Compose Manager plugin.
+# Same settings as templates/openjarvis.xml and templates/cognee.xml.
+# Put secrets in a .env file next to this file (never commit it):
+#   ANTHROPIC_API_KEY=...  MISTRAL_API_KEY=...  OPENAI_API_KEY=...
+#   OPENJARVIS_API_KEY=... (blank: generated)   COGNEE_API_KEY=...
+# The jarvis-net network must already exist: docker network create jarvis-net
+
+name: jarvis
+
+networks:
+  jarvis-net:
+    external: true
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges
+  cap_drop:
+    - ALL
+  networks:
+    - jarvis-net
+
+services:
+  cognee:
+    <<: *hardening
+    image: ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u1
+    container_name: cognee
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      COGNEE_API_KEY: ${COGNEE_API_KEY:-}
+      COGNEE_LLM_PROVIDER: ${COGNEE_LLM_PROVIDER:-}
+      COGNEE_LLM_MODEL: ${COGNEE_LLM_MODEL:-}
+      COGNEE_EXCLUDE: ${COGNEE_EXCLUDE:-}
+      TZ: ${TZ:-Europe/Madrid}
+    volumes:
+      - /mnt/cache/appdata/cognee:/cognee-data
+      - /mnt/user/TheMachine:/vault:ro
+    # No host port. Uncomment to reach the API (graph view) from the LAN.
+    # ports:
+    #   - "8001:8000"
+
+  openjarvis:
+    <<: *hardening
+    image: ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u1
+    container_name: openjarvis
+    depends_on:
+      - cognee
+    ports:
+      - "8000:8000"
+    environment:
+      OPENJARVIS_API_KEY: ${OPENJARVIS_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      COGNEE_URL: http://cognee:8000
+      COGNEE_API_KEY: ${COGNEE_API_KEY:-}
+      OPENJARVIS_OLLAMA_HOST: ${OPENJARVIS_OLLAMA_HOST:-}
+      OPENJARVIS_CUSTOM_MODULES: ${OPENJARVIS_CUSTOM_MODULES:-}
+      TZ: ${TZ:-Europe/Madrid}
+    volumes:
+      - /mnt/cache/appdata/openjarvis:/data
+      - /mnt/user/TheMachine:/vault

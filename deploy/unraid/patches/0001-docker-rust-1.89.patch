@@ -1,0 +1,21 @@
+Build-time fix for upstream deploy/docker/Dockerfile (pinned commit cf464de).
+Upstream #1106 raised the Rust floor to 1.89 (rust/rust-toolchain.toml, uuid 1.27)
+but the Dockerfile still installs 1.88. maturin runs from /app, so the toolchain
+file in /app/rust is not picked up and the build fails. Drop this patch once
+upstream bumps the Dockerfile (apply.sh reports it as already applied).
+
+diff --git a/deploy/docker/Dockerfile b/deploy/docker/Dockerfile
+index c7cf2ad..521e428 100644
+--- a/deploy/docker/Dockerfile
++++ b/deploy/docker/Dockerfile
+@@ -25,8 +25,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
+ 
+ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+         sh -s -- -y --profile minimal --default-toolchain none && \
+-    rustup toolchain install 1.88 --profile minimal && \
+-    rustup default 1.88
++    rustup toolchain install 1.89 --profile minimal && \
++    rustup default 1.89
+ 
+ WORKDIR /app
+ 

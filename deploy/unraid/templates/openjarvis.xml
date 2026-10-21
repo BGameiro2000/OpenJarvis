@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>openjarvis</Name>
+  <Repository>ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u1</Repository>
+  <Registry>https://github.com/BGameiro2000/OpenJarvis/pkgs/container/openjarvis-unraid</Registry>
+  <Network>jarvis-net</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/BGameiro2000/OpenJarvis/issues</Support>
+  <Project>https://github.com/BGameiro2000/OpenJarvis/tree/main/deploy/unraid</Project>
+  <Overview>OpenJarvis personal AI assistant (jarvis serve): REST API and web UI on port 8000, running on cloud models only (Anthropic, Mistral or OpenAI key). Built from the BGameiro2000 fork of open-jarvis/OpenJarvis at a pinned commit.&#xD;
+&#xD;
+Databases and config live in /data on the cache pool. All markdown memory (SOUL.md, MEMORY.md, USER.md, personas and notes) lives in /vault on the array, readable in Obsidian. Graph recall comes from the companion Cognee container on the same jarvis-net network.&#xD;
+&#xD;
+Before installing: create the network (docker network create jarvis-net), set Settings, Docker, "Preserve user defined networks" to Yes, and install Cognee first. On first start the container generates an API key and prints it once in the log; paste it into the web UI Settings page. Expose on LAN or Tailscale only, never port-forward.</Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8000]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/BGameiro2000/OpenJarvis/main/deploy/unraid/templates/openjarvis.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/BGameiro2000/OpenJarvis/main/assets/OpenJarvis_Circular_Logo.png</Icon>
+  <ExtraParams>--security-opt=no-new-privileges --cap-drop=ALL --restart=unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Network jarvis-net (docker network create jarvis-net) and Docker setting "Preserve user defined networks: Yes". At least one of ANTHROPIC_API_KEY, MISTRAL_API_KEY, OPENAI_API_KEY.</Requires>
+  <Config Name="Web UI and API port" Target="8000" Default="8000" Mode="tcp" Description="REST API (/v1, /api) and web UI. LAN or Tailscale only." Type="Port" Display="always" Required="true" Mask="false">8000</Config>
+  <Config Name="Data (cache pool)" Target="/data" Default="/mnt/cache/appdata/openjarvis" Mode="rw" Description="OPENJARVIS_HOME: config.toml, API key, credentials, skills, custom code, logs and every database. Use the pool path, not /mnt/user, so SQLite avoids the FUSE layer." Type="Path" Display="always" Required="true" Mask="false">/mnt/cache/appdata/openjarvis</Config>
+  <Config Name="Vault (markdown memory)" Target="/vault" Default="/mnt/user/TheMachine" Mode="rw" Description="Markdown memory volume on the array (share with Use cache pool: No). Source of truth for SOUL.md, MEMORY.md, USER.md, personas and notes. An empty share gets the folder skeleton on first start; nothing is ever overwritten." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/TheMachine</Config>
+  <Config Name="OPENJARVIS_API_KEY" Target="OPENJARVIS_API_KEY" Default="" Mode="" Description="Key clients send as Authorization: Bearer KEY. Blank: generated on first start, stored in /data/.api_key and printed once in the log." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="ANTHROPIC_API_KEY" Target="ANTHROPIC_API_KEY" Default="" Mode="" Description="Anthropic key. When set, the first-start config uses Claude (claude-sonnet-4-6)." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="MISTRAL_API_KEY" Target="MISTRAL_API_KEY" Default="" Mode="" Description="Mistral key (through litellm). Used for the default model when no Anthropic key is set." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="OPENAI_API_KEY" Target="OPENAI_API_KEY" Default="" Mode="" Description="Optional OpenAI key." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="COGNEE_URL" Target="COGNEE_URL" Default="http://cognee:8000" Mode="" Description="Cognee API on jarvis-net. Blank disables the cognee_recall tool." Type="Variable" Display="always" Required="false" Mask="false">http://cognee:8000</Config>
+  <Config Name="COGNEE_API_KEY" Target="COGNEE_API_KEY" Default="" Mode="" Description="Same value as COGNEE_API_KEY in the Cognee container." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="TZ" Target="TZ" Default="Europe/Madrid" Mode="" Description="Time zone." Type="Variable" Display="always" Required="false" Mask="false">Europe/Madrid</Config>
+  <Config Name="OPENJARVIS_OLLAMA_HOST" Target="OPENJARVIS_OLLAMA_HOST" Default="" Mode="" Description="Optional remote Ollama URL (passed to OpenJarvis as OLLAMA_HOST). Leave blank: no local models here." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="OPENJARVIS_CUSTOM_MODULES" Target="OPENJARVIS_CUSTOM_MODULES" Default="" Mode="" Description="Comma separated Python modules from /data/custom to import before the server starts (agents, tools). Blank: none." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

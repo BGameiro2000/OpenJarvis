@@ -1,0 +1,349 @@
+#!/usr/bin/env python
+"""Ingest the markdown vault into Cognee, then build the graph (cognify).
+
+Runs inside the Cognee container and talks to its own API on localhost, so the
+embedded graph database is only ever opened by the server.
+
+    docker exec cognee cognee-ingest --estimate   # count files and tokens, send nothing
+    docker exec cognee cognee-ingest              # add new, update changed, cognify
+    docker exec cognee cognee-ingest --no-cognify # upload only
+
+What is read: *.md files under /vault except AGENTS.md. Skipped: hidden
+folders (.obsidian, .trash, .git), _backups/, personas/, and every folder
+named in COGNEE_EXCLUDE (comma separated, a folder name or a path relative to
+the vault, for example "inbox,daily/private").
+
+What is sent to the LLM provider (Anthropic or Mistral): during cognify, the
+text of every new or changed note, for entity and summary extraction. Embeddings are
+computed locally on CPU.
+
+State: /cognee-data/ingest-state.json remembers each file's sha256 and Cognee
+data id. Unchanged files are skipped without an upload. Deleted notes are
+reported, not removed from the graph (use --prune to remove them).
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+VAULT = Path(os.environ.get("COGNEE_VAULT", "/vault"))
+STATE = Path(os.environ.get("COGNEE_INGEST_STATE", "/cognee-data/ingest-state.json"))
+API = os.environ.get("COGNEE_LOCAL_URL", "http://localhost:8000").rstrip("/")
+DATASET = os.environ.get("COGNEE_DATASET", "vault")
+ALWAYS_SKIP = {"_backups", "personas"}
+# Folder maps for agents, not knowledge.
+SKIP_FILES = {"AGENTS.md"}
+SUFFIXES = {".md", ".markdown"}
+
+# Rough cognify cost model, stated so it can be checked against the bill:
+# each note's tokens go to the LLM about COGNIFY_PASSES times (chunk
+# extraction, summaries, prompts) and produce about OUTPUT_RATIO as much output.
+COGNIFY_PASSES = float(os.environ.get("COGNEE_ESTIMATE_PASSES", "3"))
+OUTPUT_RATIO = float(os.environ.get("COGNEE_ESTIMATE_OUTPUT_RATIO", "0.5"))
+PRICE_IN = float(os.environ.get("COGNEE_PRICE_IN_PER_MTOK", "3.0"))
+PRICE_OUT = float(os.environ.get("COGNEE_PRICE_OUT_PER_MTOK", "15.0"))
+
+
+def log(msg: str) -> None:
+    print(msg, flush=True)
+
+
+def excluded_dirs() -> tuple[set[str], set[str]]:
+    names, paths = set(ALWAYS_SKIP), set()
+    for raw in os.environ.get("COGNEE_EXCLUDE", "").split(","):
+        item = raw.strip().strip("/")
+        if not item:
+            continue
+        (paths if "/" in item else names).add(item)
+    return names, paths
+
+
+def walk_vault() -> dict[str, Path]:
+    names, paths = excluded_dirs()
+    found: dict[str, Path] = {}
+    for dirpath, dirnames, filenames in os.walk(VAULT):
+        rel_dir = Path(dirpath).relative_to(VAULT).as_posix()
+        keep = []
+        for d in dirnames:
+            rel = d if rel_dir == "." else f"{rel_dir}/{d}"
+            if d.startswith(".") or d in names or rel in paths:
+                continue
+            keep.append(d)
+        dirnames[:] = sorted(keep)
+        for f in sorted(filenames):
+            p = Path(dirpath) / f
+            if (
+                p.suffix.lower() in SUFFIXES
+                and f not in SKIP_FILES
+                and not f.startswith(".")
+                and p.is_file()
+            ):
+                found[p.relative_to(VAULT).as_posix()] = p
+    return found
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def load_state() -> dict:
+    if STATE.is_file():
+        return json.loads(STATE.read_text())
+    return {"dataset": DATASET, "files": {}}
+
+
+def save_state(state: dict) -> None:
+    tmp = STATE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(state, indent=1, sort_keys=True))
+    tmp.replace(STATE)
+
+
+def plan(files: dict[str, Path], state: dict) -> tuple[list, list, list, list]:
+    new, changed, same = [], [], []
+    for rel, p in files.items():
+        digest = sha256(p)
+        old = state["files"].get(rel)
+        if old is None:
+            new.append((rel, p, digest))
+        elif old.get("sha256") != digest:
+            changed.append((rel, p, digest))
+        else:
+            same.append(rel)
+    gone = sorted(set(state["files"]) - set(files))
+    return new, changed, same, gone
+
+
+def count_tokens(texts: list[str]) -> int:
+    try:
+        import tiktoken
+
+        enc = tiktoken.get_encoding("cl100k_base")
+        return sum(len(enc.encode(t, disallowed_special=())) for t in texts)
+    except Exception:  # noqa: BLE001  (offline or missing encoder: 4 chars per token)
+        return sum(len(t) for t in texts) // 4
+
+
+def estimate(new: list, changed: list, same: list, gone: list) -> None:
+    todo = new + changed
+    tokens = count_tokens([p.read_text(errors="replace") for _, p, _ in todo])
+    tin = tokens * COGNIFY_PASSES
+    tout = tokens * OUTPUT_RATIO
+    cost = tin / 1e6 * PRICE_IN + tout / 1e6 * PRICE_OUT
+    names, paths = excluded_dirs()
+    log(f"vault: {VAULT}  dataset: {DATASET}")
+    log(f"skipped folders: {', '.join(sorted(names | paths))} and hidden folders")
+    log(
+        f"files: {len(new)} new, {len(changed)} changed, "
+        f"{len(same)} unchanged, {len(gone)} deleted"
+    )
+    log(f"tokens to process: {tokens}")
+    log(f"estimated LLM usage: {tin:,.0f} input + {tout:,.0f} output tokens")
+    log(
+        f"estimated cost: ${cost:,.2f} at ${PRICE_IN}/M in, ${PRICE_OUT}/M out "
+        f"(x{COGNIFY_PASSES} input passes; "
+        "set COGNEE_PRICE_*_PER_MTOK for other models)"
+    )
+    log("nothing was sent")
+
+
+class Api:
+    def __init__(self, key: str) -> None:
+        import httpx
+
+        self.httpx = httpx
+        self.client = httpx.Client(
+            base_url=API, headers={"X-Api-Key": key}, timeout=None
+        )
+
+    def check(self, resp, what: str):
+        if resp.status_code >= 400:
+            raise SystemExit(
+                f"{what} failed: HTTP {resp.status_code} {resp.text[:400]}"
+            )
+        return resp
+
+    def dataset_id(self) -> str | None:
+        r = self.check(self.client.get("/api/v1/datasets"), "list datasets")
+        for d in r.json():
+            if d.get("name") == DATASET:
+                return d["id"]
+        return None
+
+    def data_by_path(self, dataset_id: str) -> dict[str, str]:
+        out, offset = {}, 0
+        while True:
+            r = self.check(
+                self.client.get(
+                    f"/api/v1/datasets/{dataset_id}/data",
+                    params={"limit": 1000, "offset": offset},
+                ),
+                "list data",
+            )
+            rows = r.json()
+            for row in rows:
+                meta = row.get("externalMetadata") or row.get("external_metadata") or {}
+                if meta.get("vault_path"):
+                    out[meta["vault_path"]] = row["id"]
+            if len(rows) < 1000:
+                return out
+            offset += 1000
+
+    @staticmethod
+    def upload_name(rel: str) -> str:
+        return rel.replace("/", "__")
+
+    def add(self, rel: str, p: Path):
+        top = rel.split("/", 1)[0] if "/" in rel else "root"
+        return self.client.post(
+            "/api/v1/add",
+            files=[("data", (self.upload_name(rel), p.read_bytes(), "text/markdown"))],
+            data={
+                "datasetName": DATASET,
+                "node_set": [top],
+                "external_metadata": json.dumps([{"vault_path": rel}]),
+            },
+        )
+
+    def update(self, rel: str, p: Path, data_id: str, dataset_id: str):
+        top = rel.split("/", 1)[0] if "/" in rel else "root"
+        return self.client.patch(
+            "/api/v1/update",
+            params={"data_id": data_id, "dataset_id": dataset_id},
+            files=[("data", (self.upload_name(rel), p.read_bytes(), "text/markdown"))],
+            data={"node_set": [top]},
+        )
+
+    def delete(self, dataset_id: str, data_id: str):
+        return self.client.delete(f"/api/v1/datasets/{dataset_id}/data/{data_id}")
+
+    def cognify(self):
+        return self.client.post("/api/v1/cognify", json={"datasets": [DATASET]})
+
+
+def api_key() -> str:
+    key = os.environ.get("COGNEE_API_KEY", "").strip()
+    if not key:
+        f = Path(os.environ.get("COGNEE_API_KEY_FILE", "/cognee-data/.api_key"))
+        key = f.read_text().strip() if f.is_file() else ""
+    if not key:
+        raise SystemExit("no COGNEE_API_KEY and no /cognee-data/.api_key")
+    return key
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Ingest the vault into Cognee.")
+    ap.add_argument(
+        "--estimate",
+        action="store_true",
+        help="print counts, tokens and cost; send nothing",
+    )
+    ap.add_argument(
+        "--no-cognify", action="store_true", help="upload only, do not build the graph"
+    )
+    ap.add_argument(
+        "--prune",
+        action="store_true",
+        help="remove notes deleted from the vault from Cognee",
+    )
+    args = ap.parse_args()
+
+    os.umask(0o077)
+    if not VAULT.is_dir():
+        raise SystemExit(f"{VAULT} is not mounted")
+    state = load_state()
+    files = walk_vault()
+    new, changed, same, gone = plan(files, state)
+
+    if args.estimate:
+        estimate(new, changed, same, gone)
+        return 0
+
+    started = time.time()
+    api = Api(api_key())
+    errors: list[str] = []
+
+    def failed(resp, what: str) -> bool:
+        if resp.status_code < 400:
+            return False
+        errors.append(what)
+        log(f"FAILED  {what}: HTTP {resp.status_code} {resp.text[:300]}")
+        return True
+
+    log(
+        f"files: {len(new)} new, {len(changed)} changed, "
+        f"{len(same)} unchanged (skipped), {len(gone)} deleted"
+    )
+    for rel, p, digest in new:
+        r = api.add(rel, p)
+        if (
+            r.status_code == 409
+        ):  # already in Cognee with other content: treat as changed
+            changed.append((rel, p, digest))
+            continue
+        if failed(r, f"add {rel}"):
+            continue
+        state["files"][rel] = {"sha256": digest, "data_id": None, "cognified": False}
+        log(f"added   {rel}")
+    dataset_id = api.dataset_id()
+    ids = api.data_by_path(dataset_id) if dataset_id else {}
+    for rel, entry in state["files"].items():
+        if not entry.get("data_id") and rel in ids:
+            entry["data_id"] = ids[rel]
+    save_state(state)
+
+    for rel in gone:
+        data_id = state["files"][rel].get("data_id")
+        if args.prune and data_id and dataset_id:
+            if failed(api.delete(dataset_id, data_id), f"delete {rel}"):
+                continue
+            del state["files"][rel]
+            save_state(state)
+            log(f"removed {rel}")
+        else:
+            log(f"deleted from vault, still in Cognee: {rel} (use --prune)")
+
+    # update() replaces the document and rebuilds its part of the graph, so
+    # it calls the LLM just like cognify.
+    for rel, p, digest in changed:
+        data_id = (state["files"].get(rel) or {}).get("data_id") or ids.get(rel)
+        if not data_id or not dataset_id:
+            errors.append(f"update {rel}")
+            log(f"FAILED  update {rel}: no Cognee id known")
+            continue
+        if args.no_cognify:
+            log(
+                f"pending {rel} (changed; updating needs the LLM, "
+                "skipped by --no-cognify)"
+            )
+            continue
+        if failed(api.update(rel, p, data_id, dataset_id), f"update {rel}"):
+            continue
+        state["files"][rel] = {"sha256": digest, "data_id": data_id, "cognified": True}
+        save_state(state)
+        log(f"updated {rel}")
+
+    pending = [rel for rel, e in state["files"].items() if not e.get("cognified")]
+    if pending and not args.no_cognify:
+        log(f"cognify: {len(pending)} file(s), this sends their text to the LLM ...")
+        if not failed(api.cognify(), "cognify"):
+            for rel in pending:
+                state["files"][rel]["cognified"] = True
+            save_state(state)
+            log("cognify: done")
+    elif not pending:
+        log("nothing to cognify")
+    log(
+        f"finished in {time.time() - started:.0f}s, {len(errors)} error(s)"
+        + ("; failed items are retried on the next run" if errors else "")
+    )
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

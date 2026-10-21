@@ -1,0 +1,230 @@
+name: unraid-image
+
+# Builds the Unraid images from deploy/unraid/ (see deploy/unraid/README.md).
+# OpenJarvis: upstream deploy/docker/Dockerfile at the pinned commit -> base
+# image, then deploy/unraid/Dockerfile FROM that base. Cognee: thin layer over
+# the pinned official cognee/cognee tag. Pins live in deploy/unraid/versions.env.
+#
+# Images are pushed to GHCR only from main or a manual run. Other branches
+# build and smoke test without pushing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push images to GHCR"
+        type: boolean
+        default: true
+  push:
+    paths:
+      - "deploy/unraid/**"
+      - ".github/workflows/unraid-image.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: unraid-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: bgameiro2000
+
+jobs:
+  openjarvis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout packaging (this commit)
+        uses: actions/checkout@v4
+        with:
+          path: packaging
+
+      - name: Read pins
+        id: pins
+        run: |
+          set -euo pipefail
+          grep -E '^[A-Z_]+=' packaging/deploy/unraid/versions.env >> "$GITHUB_OUTPUT"
+          . packaging/deploy/unraid/versions.env
+          short="${OPENJARVIS_COMMIT:0:7}"
+          echo "short=$short" >> "$GITHUB_OUTPUT"
+          echo "human=${OPENJARVIS_VERSION}-${short}-u${UNRAID_LAYER_VERSION}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "push=${{ inputs.push }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout OpenJarvis at the pinned commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pins.outputs.OPENJARVIS_COMMIT }}
+          path: src
+
+      - name: Overlay deploy/unraid from this commit
+        run: |
+          rm -rf src/deploy/unraid
+          cp -a packaging/deploy/unraid src/deploy/unraid
+
+      - name: Apply build-time patches to upstream files
+        run: sh src/deploy/unraid/patches/apply.sh src
+
+      # The "docker" driver lets the second build use the locally loaded base.
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+
+      - name: Log in to GHCR
+        if: steps.pins.outputs.push == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build base image (upstream Dockerfile plus patches/)
+        uses: docker/build-push-action@v6
+        with:
+          context: src
+          file: src/deploy/docker/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: openjarvis-base:${{ steps.pins.outputs.short }}
+
+      - name: Build Unraid image
+        uses: docker/build-push-action@v6
+        with:
+          context: src
+          file: src/deploy/unraid/Dockerfile
+          platforms: linux/amd64
+          load: true
+          build-args: |
+            BASE_IMAGE=openjarvis-base:${{ steps.pins.outputs.short }}
+            OPENJARVIS_COMMIT=${{ steps.pins.outputs.OPENJARVIS_COMMIT }}
+            OPENJARVIS_VERSION=${{ steps.pins.outputs.OPENJARVIS_VERSION }}
+            UNRAID_LAYER_VERSION=${{ steps.pins.outputs.UNRAID_LAYER_VERSION }}
+          tags: openjarvis-unraid:test
+
+      - name: Image sizes
+        run: docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep -E 'openjarvis-(base|unraid)'
+
+      - name: Smoke test (UID 99, caps dropped, healthy, key required)
+        run: |
+          set -euo pipefail
+          mkdir -p t/data t/vault && sudo chown -R 99:100 t
+          docker network create jarvis-net
+          docker run -d --name oj --network jarvis-net -p 8000:8000 \
+            --security-opt=no-new-privileges --cap-drop=ALL \
+            -e ANTHROPIC_API_KEY=sk-ant-smoke-test -e TZ=Europe/Madrid \
+            -v "$PWD/t/data:/data" -v "$PWD/t/vault:/vault" openjarvis-unraid:test
+          for i in $(seq 1 45); do
+            s=$(docker inspect -f '{{.State.Health.Status}}' oj); echo "health: $s"
+            [ "$s" = healthy ] && break
+            [ "$s" = unhealthy ] && { docker logs oj; exit 1; }
+            sleep 2
+          done
+          [ "$(docker inspect -f '{{.State.Health.Status}}' oj)" = healthy ] || { docker logs oj; exit 1; }
+          docker exec oj id
+          docker exec oj grep CapEff /proc/1/status
+          key=$(sudo cat t/data/.api_key)
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/v1/models)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $key" http://127.0.0.1:8000/v1/models)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/)" = 200
+          docker exec oj jarvis-backup
+          sudo find t/vault -maxdepth 1 | sort
+          docker logs oj 2>&1 | grep -v 'GET /health' | tail -30
+
+      - name: Push
+        if: steps.pins.outputs.push == 'true'
+        run: |
+          set -euo pipefail
+          img=${{ env.REGISTRY }}/${{ env.OWNER }}/openjarvis-unraid
+          base=${{ env.REGISTRY }}/${{ env.OWNER }}/openjarvis-base
+          for t in "${{ steps.pins.outputs.OPENJARVIS_COMMIT }}" "${{ steps.pins.outputs.short }}"; do
+            docker tag openjarvis-base:${{ steps.pins.outputs.short }} "$base:$t"; docker push "$base:$t"
+          done
+          for t in "${{ steps.pins.outputs.human }}" "sha-${GITHUB_SHA:0:7}"; do
+            docker tag openjarvis-unraid:test "$img:$t"; docker push "$img:$t"
+          done
+          echo "Pushed $img:${{ steps.pins.outputs.human }}" >> "$GITHUB_STEP_SUMMARY"
+
+  cognee:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read pins
+        id: pins
+        run: |
+          set -euo pipefail
+          grep -E '^[A-Z_]+=' deploy/unraid/versions.env >> "$GITHUB_OUTPUT"
+          . deploy/unraid/versions.env
+          echo "human=${COGNEE_VERSION}-u${COGNEE_LAYER_VERSION}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "push=${{ inputs.push }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: steps.pins.outputs.push == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Cognee image
+        uses: docker/build-push-action@v6
+        with:
+          context: deploy/unraid/cognee
+          platforms: linux/amd64
+          load: true
+          build-args: |
+            COGNEE_VERSION=${{ steps.pins.outputs.COGNEE_VERSION }}
+            COGNEE_LAYER_VERSION=${{ steps.pins.outputs.COGNEE_LAYER_VERSION }}
+          tags: cognee-unraid:test
+
+      - name: Image size
+        run: docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep cognee-unraid
+
+      - name: Smoke test (UID 99, caps dropped, healthy, key required)
+        run: |
+          set -euo pipefail
+          mkdir -p t/data t/vault && echo "# Note" > t/vault/a.md && sudo chown -R 99:100 t
+          docker run -d --name cg --security-opt=no-new-privileges --cap-drop=ALL \
+            -e COGNEE_API_KEY=smoke-test-key -e ANTHROPIC_API_KEY=sk-ant-smoke-test \
+            -v "$PWD/t/data:/cognee-data" -v "$PWD/t/vault:/vault:ro" cognee-unraid:test
+          for i in $(seq 1 60); do
+            s=$(docker inspect -f '{{.State.Health.Status}}' cg); echo "health: $s"
+            [ "$s" = healthy ] && break
+            [ "$s" = unhealthy ] && { docker logs cg; exit 1; }
+            sleep 3
+          done
+          [ "$(docker inspect -f '{{.State.Health.Status}}' cg)" = healthy ] || { docker logs cg; exit 1; }
+          docker exec cg id
+          docker exec cg grep CapEff /proc/1/status
+          test "$(docker exec cg curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/v1/datasets)" = 401
+          test "$(docker exec cg curl -s -o /dev/null -w '%{http_code}' -H 'X-Api-Key: smoke-test-key' http://localhost:8000/api/v1/datasets)" = 200
+          docker exec cg cognee-ingest --estimate
+          if docker exec cg touch /vault/should-fail; then echo "vault is writable"; exit 1; fi
+          docker logs cg 2>&1 | tail -30
+
+      - name: Push
+        if: steps.pins.outputs.push == 'true'
+        run: |
+          set -euo pipefail
+          img=${{ env.REGISTRY }}/${{ env.OWNER }}/cognee-unraid
+          for t in "${{ steps.pins.outputs.human }}" "sha-${GITHUB_SHA:0:7}"; do
+            docker tag cognee-unraid:test "$img:$t"; docker push "$img:$t"
+          done
+          echo "Pushed $img:${{ steps.pins.outputs.human }}" >> "$GITHUB_STEP_SUMMARY"
