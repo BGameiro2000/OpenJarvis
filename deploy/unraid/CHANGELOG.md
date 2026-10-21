@@ -3,6 +3,17 @@
 Migration notes for agents maintaining this folder. Newest first. Each entry
 says what changed and what an existing install must do.
 
+## 2026-10-21: Machine HUD 0.1.0
+
+Image: `machine-hud:0.1.0` (new, third container). Nothing changes in the
+other two images.
+
+- New install only: add `templates/machine-hud.xml`, set
+  `OPENJARVIS_API_KEY`, `COGNEE_API_KEY` and `HUD_PASSWORD`.
+- Finch and Root on one floor need the `home_jarvis` package from branch
+  `home-jarvis` in `/data/custom` and `OPENJARVIS_CUSTOM_MODULES=home_jarvis`.
+  Without it the HUD runs in plain mode (Finch only).
+
 ## 2026-10-21: first version
 
 Images: `openjarvis-unraid:0.0.1.dev88-cf464de-u1` (OpenJarvis commit

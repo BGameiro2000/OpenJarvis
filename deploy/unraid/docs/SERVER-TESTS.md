@@ -254,3 +254,27 @@ Uses its own network (`jarvis-wiring`) and throwaway folders; it does not touch
 the real containers or data, but it uses the container name `cognee` and port
 18000, so stop the real `cognee` container first and start it again after.
 Expected: "ALL WIRING TESTS PASSED".
+
+### S12. Machine HUD
+
+Install `templates/machine-hud.xml` with `HUD_DEMO=1` first.
+
+1. Open `http://<server>:8080`, log in, send "Should I get the A2000 now?".
+   Expected: Root cuts in, Finch's last sentence shows struck through, the
+   log shows INTERJ and TURN end.
+2. `docker exec machine-hud id -u` prints 99;
+   `docker exec machine-hud sh -c 'grep CapEff /proc/1/status'` shows all zeros;
+   `docker exec machine-hud touch /vault/x` fails.
+3. In the browser dev tools, search the page source and network responses
+   for the OpenJarvis key. Expected: not found.
+4. Set `HUD_DEMO=0`, Apply. Without the floor package the top bar shows
+   FLOOR grey and mode PLAIN; a question gets THINKING, a TOOL line with a
+   duration if a tool ran, SPEAKING, then LISTENING (real key, real cost).
+5. Copy `home_jarvis` from branch `home-jarvis` to
+   `/mnt/cache/appdata/openjarvis/custom/`, set
+   `OPENJARVIS_CUSTOM_MODULES=home_jarvis` on openjarvis, restart it.
+   Expected in its log: `[home_jarvis] floor ready`. The HUD shows FLOOR
+   green and mode FLOOR; both cards change state during a turn.
+6. `docker stop cognee`: the HUD keeps working, COGNEE turns red.
+   `docker start cognee` after.
+7. On the phone over Tailscale: the page fits the width, the feed is first.
