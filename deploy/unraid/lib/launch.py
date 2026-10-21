@@ -6,6 +6,10 @@ in the server process before ``serve`` builds the agent.
 - ``cognee_tools`` (shipped in the image) is imported when ``COGNEE_URL`` is set.
 - Every module named in ``OPENJARVIS_CUSTOM_MODULES`` (comma separated) is
   imported next. ``/data/custom`` is on ``PYTHONPATH``.
+- Before any of that, ``openjarvis_unraid_hooks.install()`` wraps the server's
+  ``create_app`` so modules can register ``on_server_ready`` callbacks and get
+  the live app, its event bus and engine (for example a floor manager and its
+  strategy registry, configured by ``/data/custom/floor.toml``).
 
 A module that fails to import is reported and skipped; the server still starts.
 """
@@ -40,6 +44,12 @@ def load_custom_modules() -> None:
 
 
 def main() -> None:
+    import openjarvis_unraid_hooks as hooks
+
+    hooks.install()
+    floor = hooks.floor_config_path()
+    if floor.is_file():
+        _log(f"floor config present: {floor} (read by custom modules)")
     load_custom_modules()
     from openjarvis.cli import main as jarvis_main
 
