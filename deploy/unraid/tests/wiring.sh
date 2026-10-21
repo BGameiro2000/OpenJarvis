@@ -63,9 +63,9 @@ docker run -d --name "$CG" --network "$NET" "${HARD[@]}" \
     -e COGNEE_API_KEY="$CG_KEY" -e TZ=Europe/Madrid \
     -v "$WORK/cognee:/cognee-data" -v "$WORK/vault:/vault:ro" "$CG_IMAGE" >/dev/null
 wait_healthy "$CG" 900
-docker exec "$CG" id | grep -q 'uid=99 gid=100' && pass "13 cognee runs as 99:100" || fail "13 cognee uid"
+docker exec "$CG" id | grep -c 'uid=99 gid=100' >/dev/null && pass "13 cognee runs as 99:100" || fail "13 cognee uid"
 docker exec "$CG" grep -q 'CapEff:.0000000000000000' /proc/1/status && pass "13 cognee capabilities dropped" || fail "13 cognee caps"
-docker logs "$CG" 2>&1 | grep -q 'keyless ingestion' && pass "cognee started keyless (no LLM key)" || fail "keyless mode not detected"
+docker logs "$CG" 2>&1 | grep -c 'keyless ingestion' >/dev/null && pass "cognee started keyless (no LLM key)" || fail "keyless mode not detected"
 
 # --- OpenJarvis ---------------------------------------------------------------
 docker run -d --name "$OJ" --network "$NET" "${HARD[@]}" -p 127.0.0.1:18000:8000 \
@@ -79,7 +79,7 @@ code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 [ "$(code -H "Authorization: Bearer wrong" http://127.0.0.1:18000/v1/models)" = 401 ] && pass "5 wrong key rejected (401)" || fail "5 wrong key"
 [ "$(code -H "Authorization: Bearer $KEY" http://127.0.0.1:18000/v1/models)" = 200 ] && pass "5 right key accepted (200)" || fail "5 right key"
 [ "$(code http://127.0.0.1:18000/)" = 200 ] && pass "4 web UI served (200)" || fail "4 web UI"
-docker exec "$OJ" id | grep -q 'uid=99 gid=100' && pass "9 openjarvis runs as 99:100" || fail "9 uid"
+docker exec "$OJ" id | grep -c 'uid=99 gid=100' >/dev/null && pass "9 openjarvis runs as 99:100" || fail "9 uid"
 docker exec "$OJ" grep -q 'CapEff:.0000000000000000' /proc/1/status && pass "9 openjarvis capabilities dropped" || fail "9 caps"
 docker exec "$OJ" python3 -c 'import os,httpx; r=httpx.get(os.environ["COGNEE_URL"]+"/api/v1/datasets", headers={"X-Api-Key": os.environ["COGNEE_API_KEY"]}, timeout=30); print(r.status_code); assert r.status_code == 200' \
     && pass "14 COGNEE_URL resolves from OpenJarvis and Cognee answers" || fail "14 wiring"
@@ -100,7 +100,7 @@ echo "${out:0:600}"
 
 # --- Persistence -----------------------------------------------------------------
 docker restart "$CG" >/dev/null; wait_healthy "$CG" 300
-docker logs --since 5m "$CG" 2>&1 | grep -q 'embedding model .* found in' && pass "19 embedding model reused from /cognee-data" || fail "19 model downloaded again"
+docker logs --since 5m "$CG" 2>&1 | grep -c 'embedding model .* found in' >/dev/null && pass "19 embedding model reused from /cognee-data" || fail "19 model downloaded again"
 out=$(recall "Who reviews the Unraid Jarvis project?")
 grep -qi 'Ana Ribeiro' <<<"$out" && pass "19 graph persists across a Cognee restart" || fail "19 graph after restart"
 
@@ -113,7 +113,7 @@ docker restart "$OJ" >/dev/null; wait_healthy "$OJ" 90
 pass "18 openjarvis restarts and is healthy with Cognee stopped"
 
 # --- docker kill ---------------------------------------------------------------
-docker exec "$OJ" python3 -c 'from openjarvis.tools.memory_manage import MemoryManageTool as M; print(M().execute(action="add", entry="wiring test entry").success)' | grep -q True || fail "7 memory_manage"
+docker exec "$OJ" python3 -c 'from openjarvis.tools.memory_manage import MemoryManageTool as M; print(M().execute(action="add", entry="wiring test entry").success)' | grep -c True >/dev/null || fail "7 memory_manage"
 grep -q 'wiring test entry' "$WORK/vault/MEMORY.md" && pass "7 agent memory tool writes /vault/MEMORY.md" || fail "7 MEMORY.md"
 docker kill "$OJ" >/dev/null; docker start "$OJ" >/dev/null; wait_healthy "$OJ" 90
 docker exec "$OJ" python3 -c '
