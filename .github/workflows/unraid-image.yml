@@ -155,3 +155,83 @@ jobs:
             docker tag cognee-unraid:test "$cg:$t"; docker push "$cg:$t"
           done
           echo "Pushed $img:${{ steps.pins.outputs.human }} and $cg:${{ steps.pins.outputs.cognee_human }}" >> "$GITHUB_STEP_SUMMARY"
+
+  # Machine HUD (deploy/unraid/hud/). Small and independent of the other two
+  # images, so it runs as its own job.
+  hud:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read pins
+        id: pins
+        run: |
+          set -euo pipefail
+          grep -E '^[A-Z_]+=' deploy/unraid/versions.env >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "push=${{ inputs.push }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Backend tests
+        working-directory: deploy/unraid/hud/backend
+        run: |
+          python3 -m venv /tmp/hudvenv
+          /tmp/hudvenv/bin/pip install -q -r requirements.txt pytest==8.3.4 playwright==1.55.0
+          /tmp/hudvenv/bin/python -m pytest -q
+
+      - name: Build HUD image
+        uses: docker/build-push-action@v6
+        with:
+          context: deploy/unraid/hud
+          platforms: linux/amd64
+          load: true
+          build-args: |
+            HUD_NODE_IMAGE=${{ steps.pins.outputs.HUD_NODE_IMAGE }}
+            HUD_PYTHON_IMAGE=${{ steps.pins.outputs.HUD_PYTHON_IMAGE }}
+            HUD_VERSION=${{ steps.pins.outputs.HUD_VERSION }}
+          tags: machine-hud:test
+
+      - name: Container smoke test
+        run: bash deploy/unraid/hud/tests/container.sh machine-hud:test "$RUNNER_TEMP/hud"
+
+      - name: Browser smoke test (demo mode)
+        run: |
+          set -euo pipefail
+          /tmp/hudvenv/bin/python -m playwright install --with-deps chromium >/dev/null
+          docker run -d --name hud-ui -p 127.0.0.1:18081:8080 --user 99:100 --cap-drop=ALL \
+            --read-only --tmpfs /tmp:size=16m -e HUD_DEMO=1 machine-hud:test
+          for _ in $(seq 1 30); do curl -fsS http://127.0.0.1:18081/healthz >/dev/null 2>&1 && break; sleep 1; done
+          /tmp/hudvenv/bin/python deploy/unraid/hud/tests/ui_smoke.py http://127.0.0.1:18081 "$RUNNER_TEMP/shots"
+          docker rm -f hud-ui
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hud-screenshots
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore
+
+      - name: Log in to GHCR
+        if: steps.pins.outputs.push == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push
+        if: steps.pins.outputs.push == 'true'
+        run: |
+          set -euo pipefail
+          img=${{ env.REGISTRY }}/${{ env.OWNER }}/machine-hud
+          for t in "${{ steps.pins.outputs.HUD_VERSION }}" "sha-${GITHUB_SHA:0:7}"; do
+            docker tag machine-hud:test "$img:$t"; docker push "$img:$t"
+          done
+          echo "Pushed $img:${{ steps.pins.outputs.HUD_VERSION }}" >> "$GITHUB_STEP_SUMMARY"
