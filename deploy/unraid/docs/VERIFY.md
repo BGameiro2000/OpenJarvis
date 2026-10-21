@@ -338,10 +338,18 @@ Fails if: the pinned commit no longer builds upstream (Rust toolchain, npm
 engines), or `uv export` cannot read `uv.lock` (the layer needs the lock of the
 same commit; CI overlays `deploy/unraid` onto the pinned checkout).
 Recover: pin the previous SHA in `versions.env`.
-Recorded: upstream base not buildable here (registries blocked); GitHub Actions
-is disabled on the fork, so CI has not run yet. Thin layer built on the stand-in;
-it adds 276 MB (anthropic, litellm and their dependencies, zoneinfo); the Cognee
-layer adds about 40 kB.
+Recorded in GitHub Actions (run 39591087906, real upstream base at the pinned
+commit plus `patches/0001-docker-rust-1.89.patch`): both steps built.
+`openjarvis-base:cf464de` 555 MB, `openjarvis-unraid` 777 MB (the layer adds
+about 220 MB: anthropic, litellm, zoneinfo). Smoke test on the real image:
+healthy after 16 s, `uid=99 gid=100`, `CapEff 0`, `/v1/models` 401 without key
+and 200 with it, `GET /` 200, `Memory: active` (Rust extension present),
+`jarvis-backup` copied 6 databases with integrity ok, vault skeleton created.
+Without the patch the base build fails (run 39585139246): `uuid@1.27.0 requires rustc 1.89.0`.
+Cognee job on the real `cognee/cognee:1.6.5`: built, embedding model prefetched
+and loaded from `/cognee-data/models/fastembed`, healthy after 52 s, `uid=99`,
+`CapEff 0`, datasets 401/200, `--estimate` sent nothing, `touch /vault/...`:
+`Read-only file system`.
 
 **2. Start from the template with one key.**
 Recorded, Anthropic only: `config written: engine=cloud model=claude-sonnet-4-6`.
@@ -352,8 +360,8 @@ Recover: set a key, restart.
 
 **3. Healthy within 90 s, no flapping.**
 Recorded: healthy at 22 s (first start, includes `jarvis init`), 16 s (fresh,
-Mistral), 18 s after `docker kill`. FailingStreak 0 across all runs; health
-transitions logged by `docker events` are listed at the end of this file.
+Mistral), 18 s after `docker kill`. FailingStreak 0 across all runs (see the end of
+this file).
 Fails if: the server dies (container stops) or hangs (unhealthy). A missing key
 gives `/health` 503, which the check reports but treats as up.
 
@@ -575,3 +583,7 @@ then OpenJarvis.
 Command in README. Screenshot: on the box, after test 16.
 
 ### Health transitions logged during the session
+
+Both containers (started 11:04:51 UTC) were still `healthy` with FailingStreak 0
+at 11:27:46 UTC, about 46 checks each. The `docker events` watch meant to log
+every transition did not run, so this is two snapshots, not a continuous record.

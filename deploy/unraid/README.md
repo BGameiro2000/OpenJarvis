@@ -228,7 +228,7 @@ tests left for the Unraid box are in `docs/VERIFY.md`.
 
 | # | Test | Result |
 |---|---|---|
-| 1 | Both build steps at the pinned SHA | Thin layer: built. Upstream base: not buildable here; CI builds it. Layer adds 276 MB (Cognee layer: 40 kB). |
+| 1 | Both build steps at the pinned SHA | Pass in GitHub Actions with the Rust patch: base 555 MB, Unraid image 777 MB; Cognee image built on the real 1.6.5. |
 | 2 | Starts from the template with one key | Pass (Anthropic only; Mistral only). |
 | 3 | Healthy within 90 s, no flapping | Pass: healthy at 16 to 22 s; FailingStreak 0. |
 | 4 | Web UI from another machine | Pass: `GET /` 200 from another container on the network. |
@@ -240,7 +240,7 @@ tests left for the Unraid box are in `docs/VERIFY.md`.
 | 10 | Config and storage layout | Pass: analytics off, auto_sync off, memory files in `/vault`, no SQLite in `/vault` except backups. |
 | 11 | `jarvis doctor` | Saved in `docs/VERIFY.md`. 0 failures. |
 | 12 | Upgrade, data intact | Pass: recreated from a newer image on the same volumes. |
-| 13 | Cognee on jarvis-net, healthy, UID 99 | Pass (with mock embeddings, see VERIFY). |
+| 13 | Cognee on jarvis-net, healthy, UID 99 | Pass: CI on the real image, healthy in 52 s with the real embedding model. |
 | 14 | `COGNEE_URL` resolves from OpenJarvis | Pass: `http://cognee:8000 -> 200`. |
 | 15 | `--estimate` sends nothing | Pass: counts and cost printed, no API request logged. |
 | 16 | Ingest three linked notes, recall | Upload, update, prune: pass. Cognify and recall need a real Anthropic key and the embedding model: run on the box. |
