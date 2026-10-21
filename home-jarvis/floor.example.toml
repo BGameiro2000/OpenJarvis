@@ -1,0 +1,24 @@
+# Copy to /data/custom/floor.toml (on Unraid: /mnt/cache/appdata/openjarvis/custom/floor.toml).
+# Every key is optional; these are the defaults.
+
+[global]
+profile = "home_text"   # active at startup; switch live from the HUD or POST /api/custom/floor/config
+one_per_turn = true     # at most one spoken act by the listener per turn
+cooldown_s = 90         # between interjections
+daily_cap = 15          # spoken listener acts per day, then comments only
+fatigue_switch_at = 3   # mutes and "stop"s above this: interjections become hand raises
+threshold = 0.70        # pressure needed to cut in
+max_exchanges = 2       # build mode: lines in the back-and-forth after the reply
+cost_ceiling_eur = 150  # amounts above this make Root want the floor
+model = ""              # speaker model ("" = the OpenJarvis default)
+review_model = ""       # listener review model, for example "claude-haiku-4-5"
+
+# Built-in profiles: home_text, home_voice, duet, focus, night. Override or add:
+[profiles.home_text]
+enabled = ["bidding", "interrupt", "build", "addendum", "comment", "correct"]
+threshold = 0.65
+
+[profiles.debate]
+enabled = ["bidding", "interrupt", "build", "correct", "comment"]
+one_per_turn = false
+max_exchanges = 4
