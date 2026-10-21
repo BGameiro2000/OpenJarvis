@@ -10,6 +10,10 @@ Images: `openjarvis-unraid:0.0.1.dev88-cf464de-u1` (OpenJarvis commit
 (`cognee/cognee:1.6.5`).
 
 - New install only; nothing to migrate.
+- Patch `patches/0001-docker-rust-1.89.patch`: upstream `deploy/docker/Dockerfile`
+  at the pinned commit installs Rust 1.88 while the crates need 1.89 (upstream
+  #1106), so the upstream image does not build. The patch bumps the two rustup
+  lines at build time. Delete it when upstream fixes the Dockerfile.
 - Spec deviations, all recorded in `docs/VERIFY.md` Part 1:
   - Cognee is reached through a native tool (`custom/cognee_tools.py`), not MCP,
     because upstream discovers MCP tools only at startup.

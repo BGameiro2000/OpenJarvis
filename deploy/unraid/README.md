@@ -21,6 +21,7 @@ database lives on the cache pool and can be rebuilt from the notes.
 | `templates/` | dockerMan templates |
 | `compose/docker-compose.yml` | Same setup for the Compose Manager plugin |
 | `versions.env` | Pinned OpenJarvis commit and Cognee version |
+| `patches/` | Build-time fixes to upstream files (`apply.sh` applies them) |
 | `docs/VERIFY.md` | What the code really does, assumptions, test results |
 
 ## Before you install
@@ -61,6 +62,7 @@ layer is built against the pinned commit's `uv.lock`, as in CI):
 git worktree add /tmp/oj-pinned "$OPENJARVIS_COMMIT"
 cp -a deploy/unraid /tmp/oj-pinned/deploy/unraid
 cd /tmp/oj-pinned
+sh deploy/unraid/patches/apply.sh .
 docker build -f deploy/docker/Dockerfile -t openjarvis-base:local .
 docker build -f deploy/unraid/Dockerfile --build-arg BASE_IMAGE=openjarvis-base:local \
   --build-arg OPENJARVIS_COMMIT="$OPENJARVIS_COMMIT" \
@@ -177,6 +179,7 @@ Nothing runs on a timer inside the containers. Add these with the User Scripts p
 ## Upgrade
 
 1. GitHub, this fork: "Sync fork" with upstream.
+   If the build log says a patch is "already" upstream, delete it from `patches/`.
 2. In one commit, set `OPENJARVIS_COMMIT` and `OPENJARVIS_VERSION` in
    `deploy/unraid/versions.env` (bump `UNRAID_LAYER_VERSION` for packaging changes).
 3. The workflow builds and smoke tests. Update the template Repository tag, recreate

@@ -20,6 +20,7 @@ as a patch in `deploy/unraid/patches/` applied at build time, and say so in
 | `jarvis-backup` | SQLite online backup of every DB under `/data` into `/vault/_backups/openjarvis/`. | Rarely. |
 | `vault-template/` | Skeleton copied into an empty `/vault`. | Changing the vault layout. Existing vaults are never touched. |
 | `cognee/` | Cognee layer over `cognee/cognee:<version>`: `entrypoint.sh`, `bootstrap_api_key.py`, `cognee-ingest`. | Cognee changes. |
+| `patches/` | Build-time fixes to upstream files, applied by `patches/apply.sh` in CI and in the README local build. Each patch starts with why it exists. | An upstream file must change for the image to build. Delete a patch when `apply.sh` says upstream has it. |
 | `templates/*.xml` | dockerMan templates. Image tags must match `versions.env`. | Every version bump. |
 | `compose/docker-compose.yml` | Same as the templates for Compose Manager. Tags must match. | Every version bump. |
 | `docs/VERIFY.md` | Facts checked in upstream code (Part 1), assumptions (Part 2), test results (Part 3). | When a fact changes, or after a test run. |
