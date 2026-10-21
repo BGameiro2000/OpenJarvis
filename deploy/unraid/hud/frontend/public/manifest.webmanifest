@@ -1,0 +1,9 @@
+{
+  "name": "The Machine",
+  "short_name": "Machine",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090B0D",
+  "theme_color": "#090B0D",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
