@@ -7,7 +7,7 @@
 
   let { id } = $props();
   let p = $derived(hud.personas[id]);
-  let meta = PERSONAS[id];
+  let meta = $derived(PERSONAS[id]);
   let other = $derived(id === 'finch' ? 'root' : 'finch');
   let otherState = $derived(hud.personas[other].state);
   // The listener renders at 40% while the other one holds the floor.

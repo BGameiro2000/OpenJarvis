@@ -91,6 +91,16 @@ and the HUD backend relays that feed.
   which CSP does not block.
 - **Logs** are capped at 2,000 lines and rendered with a small fixed row
   height window (virtualised list), no library.
-- **Base images** are pinned by exact tag in `versions.env`
-  (`HUD_NODE_IMAGE`, `HUD_PYTHON_IMAGE`). Digests could not be read from this
-  sandbox (Docker Hub is blocked here); pin them by digest on the first CI run.
+- **Base images** are pinned by tag and digest in `versions.env`
+  (`HUD_NODE_IMAGE`, `HUD_PYTHON_IMAGE`). The digests are the ones the first
+  CI build resolved (run 39683803814).
+
+## CI result
+
+Run 39683803814, job `hud`: backend tests (10), frontend tests (5), image
+build, container smoke (UID 99, CapEff 0, read-only root and vault, login
+required, CSP, demo turn with Root cutting in, no key in any response or
+static file), and the browser smoke in Chromium (no CSP violation or page
+error, interjection with the unsaid sentence, HTML in text stays text,
+reduced motion, phone width). Screenshots are in the run's `hud-screenshots`
+artifact.

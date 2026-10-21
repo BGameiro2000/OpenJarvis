@@ -1,8 +1,8 @@
 # Machine HUD: Svelte SPA built at image time, served by a small FastAPI
 # backend that holds the OpenJarvis and Cognee keys. Build context: this
 # directory. Base images are pinned in ../versions.env.
-ARG HUD_NODE_IMAGE=node:22.22.0-bookworm-slim
-ARG HUD_PYTHON_IMAGE=python:3.12.12-slim-bookworm
+ARG HUD_NODE_IMAGE=node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94
+ARG HUD_PYTHON_IMAGE=python:3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c
 
 FROM ${HUD_NODE_IMAGE} AS web
 WORKDIR /web
