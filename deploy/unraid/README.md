@@ -238,6 +238,9 @@ Data survives a recreate: everything lives in `/data` and `/vault`.
 
 ## Test results
 
+Full CI output: `docs/VERIFY.md`, "CI wiring run". Server tests: `docs/SERVER-TESTS.md`.
+
+
 Recorded in a cloud sandbox on 2026-10-21. Docker Hub, GHCR, crates.io, Hugging
 Face and Mistral were unreachable there, so the OpenJarvis layer was built on a
 stand-in for the upstream image (same package and layout, built from the pinned
@@ -252,8 +255,8 @@ tests left for the Unraid box are in `docs/VERIFY.md`.
 | 3 | Healthy within 90 s, no flapping | Pass: healthy at 16 to 22 s; FailingStreak 0. |
 | 4 | Web UI from another machine | Pass: `GET /` 200 from another container on the network. |
 | 5 | Key required; chat through cloud | Pass: 401 without/wrong key, 200 with it. Chat reached Anthropic, which rejected the test key (`invalid x-api-key`). Real answer: run on the box. |
-| 6 | Stop/start, `docker kill` | Pass: `docker stop` 2 s, exit 0; after `kill`, all databases `ok`, config and key unchanged. |
-| 7 | MEMORY.md in vault, backup | Pass: `memory_manage` wrote `/vault/MEMORY.md`; a new prompt contains it; backups pass `integrity_check`. Agent-driven edit: run on the box. |
+| 6 | Stop/start, `docker kill` | Pass in CI on the real image: databases `ok` after `docker kill`, key unchanged. Repeat on the pool: SERVER-TESTS S6. |
+| 7 | MEMORY.md in vault, backup | Pass in CI: `memory_manage` writes `/vault/MEMORY.md`; backup of 6 databases. Agent-driven edit: on the box. |
 | 8 | Spin-down delay | Not measurable here. Run on the box. |
 | 9 | UID 99, caps dropped | Pass: `uid=99 gid=100`, all capability sets 0, NoNewPrivs 1. |
 | 10 | Config and storage layout | Pass: analytics off, auto_sync off, memory files in `/vault`, no SQLite in `/vault` except backups. |
@@ -261,10 +264,10 @@ tests left for the Unraid box are in `docs/VERIFY.md`.
 | 12 | Upgrade, data intact | Pass: recreated from a newer image on the same volumes. |
 | 13 | Cognee on jarvis-net, healthy, UID 99 | Pass: CI on the real image, healthy in 52 s with the real embedding model. |
 | 14 | `COGNEE_URL` resolves from OpenJarvis | Pass: `http://cognee:8000 -> 200`. |
-| 15 | `--estimate` sends nothing | Pass: counts and cost printed, no API request logged. |
-| 16 | Ingest three linked notes, recall | Upload, update, prune: pass. Cognify and recall need a real Anthropic key and the embedding model: run on the box. |
+| 15 | `--estimate` sends nothing | Pass in CI: 6 files, 146 tokens, "nothing was sent". |
+| 16 | Ingest three linked notes, recall | Pass in CI, keyless: ingest in 28 s, recall through OpenJarvis names Ana Ribeiro. With a real key: SERVER-TESTS S4. |
 | 17 | Agent answers from the notes | Run on the box. |
-| 18 | Vault read-only; Cognee down | Pass: `Read-only file system`; OpenJarvis starts and stays healthy; tool returns "Cognee graph memory is unavailable ...". |
-| 19 | Restart keeps graph and model | Dataset, ingest state and key persist. Model reuse: run on the box. |
+| 18 | Vault read-only; Cognee down | Pass in CI: read-only vault; clear tool error; OpenJarvis restarts healthy with Cognee stopped. |
+| 19 | Restart keeps graph and model | Pass in CI: graph persists, embedding model reused from `/cognee-data`. |
 | 20 | Network survives reboot | Run on the box. |
 | 21 | Graph view screenshot | Endpoint found (`/api/v1/visualize`). Screenshot: run on the box. |

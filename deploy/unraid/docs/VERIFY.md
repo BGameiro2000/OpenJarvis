@@ -648,6 +648,67 @@ then OpenJarvis.
 **21. Graph view.** Endpoint: `GET /api/v1/visualize?dataset_id=<id>` (HTML).
 Command in README. Screenshot: on the box, after test 16.
 
+### CI wiring run on the real images (run 39659004581, 2026-10-21)
+
+`deploy/unraid/tests/wiring.sh` with the images built from the pinned commit
+and the official `cognee/cognee:1.6.5`, no real API key (Cognee keyless,
+OpenJarvis with a dummy Anthropic key), three linked notes:
+
+```
+cognee healthy after 61s
+PASS  13 cognee runs as 99:100
+PASS  13 cognee capabilities dropped
+PASS  cognee started keyless (no LLM key)
+wiring-openjarvis healthy after 18s
+PASS  2/3 openjarvis started from env with one dummy key and is healthy within 90s
+PASS  5 request without key rejected (401)
+PASS  5 wrong key rejected (401)
+PASS  5 right key accepted (200)
+PASS  4 web UI served (200)
+PASS  9 openjarvis runs as 99:100
+PASS  9 openjarvis capabilities dropped
+PASS  14 COGNEE_URL resolves from OpenJarvis and Cognee answers
+files: 6 new, 0 changed, 0 unchanged, 0 deleted
+tokens to process: 146
+nothing was sent
+PASS  15 estimate counts 6 notes and sends nothing
+added   MEMORY.md / SOUL.md / USER.md / ideas/Graph recall.md / projects/Unraid Jarvis.md / wiki/Ana Ribeiro.md
+cognify: done
+finished in 28s, 0 error(s)
+PASS  16 ingest of 3 linked notes plus memory files (keyless)
+PASS  16 unchanged notes skipped on re-run
+OK|## GRAPH_COMPLETION [ ... "search_result": "... Node: # Unraid Jarvis Self-hosted assistant ...
+PASS  16 recall returns context naming Ana Ribeiro
+cognee healthy after 55s
+PASS  19 embedding model reused from /cognee-data
+PASS  19 graph persists across a Cognee restart
+PASS  18 cognee cannot write to /vault
+PASS  18 tool returns a clear error with Cognee down
+wiring-openjarvis healthy after 19s
+PASS  18 openjarvis restarts and is healthy with Cognee stopped
+PASS  7 agent memory tool writes /vault/MEMORY.md
+wiring-openjarvis healthy after 12s
+databases: 6 bad: []
+PASS  6 databases intact after docker kill
+PASS  6 API key survives restarts
+backup: /vault/_backups/openjarvis/20261021T191855Z (6 databases, keeping 7)
+PASS  10 no SQLite under /vault except backups
+ALL WIRING TESTS PASSED
+```
+
+Notes from that run:
+- Image sizes: `openjarvis-base` 555 MB, `openjarvis-unraid` 777 MB,
+  `cognee-unraid` 2.77 GB.
+- The recall check proves retrieval, not answer quality: keyless GLiNER builds
+  a simpler graph than an LLM would. With a provider key the graph is richer;
+  the server runbook re-checks recall with a real key.
+- `jarvis --version` prints `0.0.0+unknown` in the CI image: upstream's
+  Dockerfile does not copy git metadata, so hatch-vcs cannot read the version.
+  The commit is in the image label and the startup log line.
+- Two first runs failed on test bugs, not image bugs: `docker logs | grep -q`
+  under `pipefail` (SIGPIPE on a match), and an assumed count of 3 files where
+  OpenJarvis had also seeded `SOUL.md`, `MEMORY.md`, `USER.md`.
+
 ### Health transitions logged during the session
 
 Both containers (started 11:04:51 UTC) were still `healthy` with FailingStreak 0
