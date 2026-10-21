@@ -29,6 +29,9 @@ Images: `openjarvis-unraid:0.0.1.dev88-cf464de-u1` (OpenJarvis commit
   - Default tools add `memory_manage` (agent edits `MEMORY.md` in the vault) to
     upstream's `think, calculator, web_search` and `cognee_recall`.
   - No `tini`: the entrypoint `exec`s Python, and uvicorn handles SIGTERM.
+  - Cognee runs keyless (local GLiNER extraction) when no LLM key is set.
+- Custom code hooks (`openjarvis_unraid_hooks`) for the later floor manager:
+  event bus access, custom events, routes, `/data/custom/floor.toml`.
 
 ## How to write the next entry
 

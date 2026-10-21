@@ -16,6 +16,10 @@ as a patch in `deploy/unraid/patches/` applied at build time, and say so in
 | `lib/configure.py` | Writes the first-start `config.toml` (`--first-start`) and warns on drift (`--check`). Never rewrites an existing config. | Changing defaults: engine choice, tools, paths. |
 | `lib/launch.py` | Custom code hook: imports `cognee_tools` (when `COGNEE_URL` is set) and `OPENJARVIS_CUSTOM_MODULES`, then runs `openjarvis.cli:main`. | Changing how user code loads. |
 | `custom/cognee_tools.py` | `cognee_recall` (read only, enabled) and `cognee_remember` (disabled). | Changing Cognee recall. |
+| `custom/openjarvis_unraid_hooks.py` | `on_server_ready`, `publish_custom`, `subscribe_custom`, `add_routes`, `load_floor_config`. Installed by `lib/launch.py` before custom modules load. | Changing what custom code can reach. Keep it free of persona logic. |
+| `custom/examples/floor_probe.py` | Test fixture proving the hooks. Not loaded by default. | Hooks change. |
+| `tests/wiring.sh`, `tests/notes/` | End-to-end tests of both images, no real key, run by CI and usable on the server. | Behaviour of either image changes. |
+| `docs/SERVER-TESTS.md`, `docs/PERSONAS-DESIGN.md` | Server runbook; personas plan. | Tests or design change. |
 | `healthcheck.py` | Standard library only. Healthy = HTTP server answers `/health` (200 or 503). | Rarely. |
 | `jarvis-backup` | SQLite online backup of every DB under `/data` into `/vault/_backups/openjarvis/`. | Rarely. |
 | `vault-template/` | Skeleton copied into an empty `/vault`. | Changing the vault layout. Existing vaults are never touched. |

@@ -16,6 +16,8 @@ database lives on the cache pool and can be rebuilt from the notes.
 |---|---|
 | `Dockerfile`, `entrypoint.sh`, `lib/`, `healthcheck.py`, `jarvis-backup` | OpenJarvis image layer (over upstream `deploy/docker/Dockerfile`) |
 | `custom/cognee_tools.py` | `cognee_recall` (on) and `cognee_remember` (off) tools |
+| `custom/openjarvis_unraid_hooks.py`, `custom/examples/` | Startup hooks for code in `/data/custom` (event bus, routes, `floor.toml`) and a probe that exercises them |
+| `tests/wiring.sh`, `tests/notes/` | End-to-end tests of both images with three linked notes, run in CI |
 | `vault-template/` | Folder skeleton copied into an empty vault |
 | `cognee/` | Cognee image layer (over official `cognee/cognee`) and `cognee-ingest` |
 | `templates/` | dockerMan templates |
@@ -23,6 +25,8 @@ database lives on the cache pool and can be rebuilt from the notes.
 | `versions.env` | Pinned OpenJarvis commit and Cognee version |
 | `patches/` | Build-time fixes to upstream files (`apply.sh` applies them) |
 | `docs/VERIFY.md` | What the code really does, assumptions, test results |
+| `docs/SERVER-TESTS.md` | Runbook for the tests that need the Unraid box |
+| `docs/PERSONAS-DESIGN.md` | Plan for Finch and Root sharing one floor (not built) |
 
 ## Before you install
 
@@ -108,7 +112,7 @@ OpenJarvis:
 | `COGNEE_API_KEY` | blank | Must match the Cognee container. |
 | `TZ` | `Europe/Madrid` | Time zone. |
 | `OPENJARVIS_OLLAMA_HOST` | blank | Optional remote Ollama, passed on as `OLLAMA_HOST`. |
-| `OPENJARVIS_CUSTOM_MODULES` | blank | Modules in `/data/custom` imported before the server starts. |
+| `OPENJARVIS_CUSTOM_MODULES` | blank | Modules in `/data/custom` imported before the server starts. They can use `openjarvis_unraid_hooks` (see below). |
 
 Cognee: `ANTHROPIC_API_KEY` or `MISTRAL_API_KEY` (Anthropic wins if both are
 set; `COGNEE_LLM_PROVIDER=mistral` forces Mistral), `COGNEE_LLM_MODEL` (blank:
@@ -143,8 +147,11 @@ docker exec cognee cognee-ingest --estimate   # file count, tokens, cost; sends 
 docker exec cognee cognee-ingest              # add new, update changed, build graph
 ```
 
-**Privacy**: ingestion sends the text of every new or changed note to the LLM
-provider (Anthropic or Mistral) for entity extraction. Embeddings run on your CPU.
+**Privacy**: with an Anthropic or Mistral key, ingestion sends the text of every
+new or changed note to that provider for entity extraction. With **no key**,
+Cognee extracts entities with a local GLiNER model and nothing leaves the server
+(slower, simpler graph; force it with `GRAPH_EXTRACTOR=gliner_demo`). Embeddings
+always run on your CPU.
 Asking questions (recall) sends nothing to the LLM from Cognee: OpenJarvis asks Cognee for context only, then
 makes its own single LLM call. Exclude folders you do not want sent with
 `COGNEE_EXCLUDE`.
@@ -160,6 +167,18 @@ KEY=$(cat /mnt/cache/appdata/cognee/.api_key)   # or your COGNEE_API_KEY
 ID=$(docker exec cognee curl -s -H "X-Api-Key: $KEY" http://localhost:8000/api/v1/datasets | python3 -c 'import json,sys;print([d["id"] for d in json.load(sys.stdin) if d["name"]=="vault"][0])')
 docker exec cognee curl -s -H "X-Api-Key: $KEY" "http://localhost:8000/api/v1/visualize?dataset_id=$ID" > /mnt/user/TheMachine/reports/graph.html
 ```
+
+## Custom code
+
+Put Python modules in `/mnt/cache/appdata/openjarvis/custom/` and list them in
+`OPENJARVIS_CUSTOM_MODULES`. At import they can register tools and agents
+(`@ToolRegistry.register`, `@AgentRegistry.register`). For anything that needs
+the running server, `openjarvis_unraid_hooks.on_server_ready(fn)` gives `fn` the
+app with `app.state.bus`, `.engine`, `.agent` and `.config`;
+`publish_custom` / `subscribe_custom` handle events outside upstream's list
+(for example `persona.interject`); `add_routes` mounts routes (behind the API key under
+`/api/`; `load_floor_config()` reads `/data/custom/floor.toml`. See
+`custom/examples/floor_probe.py` and `docs/PERSONAS-DESIGN.md`.
 
 ## Scheduled jobs (User Scripts plugin)
 
