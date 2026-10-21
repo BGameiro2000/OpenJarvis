@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""Consistent copies of every OpenJarvis SQLite database.
+
+Uses SQLite's online backup API (the same as the sqlite3 ``.backup`` command),
+so copies are consistent while the server is running. Each run writes
+``<dest>/<UTC timestamp>/`` with the databases (same relative paths as under
+OPENJARVIS_HOME), the config, and a manifest. Only the newest KEEP runs are
+kept.
+
+    docker exec openjarvis jarvis-backup            # default: keep 7
+    docker exec openjarvis jarvis-backup --keep 14
+
+Env: OPENJARVIS_HOME (default /data), JARVIS_BACKUP_DIR
+(default /vault/_backups/openjarvis), JARVIS_BACKUP_KEEP (default 7).
+"""
+
+import argparse
+import datetime as dt
+import json
+import os
+import shutil
+import sqlite3
+import sys
+from pathlib import Path
+
+SKIP_DIRS = {"home", "custom", "skill-index", "__pycache__"}
+
+
+def is_sqlite(path: Path) -> bool:
+    try:
+        with path.open("rb") as fh:
+            return fh.read(16) == b"SQLite format 3\x00"
+    except OSError:
+        return False
+
+
+def find_databases(root: Path) -> list[Path]:
+    found = []
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        for name in filenames:
+            p = Path(dirpath) / name
+            if p.is_symlink() or name.endswith(("-wal", "-shm", "-journal")):
+                continue
+            if is_sqlite(p):
+                found.append(p)
+    return sorted(found)
+
+
+def backup_one(src: Path, dst: Path) -> dict:
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    source = sqlite3.connect(f"file:{src}?mode=ro", uri=True, timeout=30)
+    try:
+        target = sqlite3.connect(dst)
+        try:
+            source.backup(target)
+            check = target.execute("PRAGMA integrity_check").fetchone()[0]
+        finally:
+            target.close()
+    finally:
+        source.close()
+    return {"file": str(dst.name), "bytes": dst.stat().st_size, "integrity": check}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--home", default=os.environ.get("OPENJARVIS_HOME", "/data"))
+    ap.add_argument("--dest", default=os.environ.get("JARVIS_BACKUP_DIR", "/vault/_backups/openjarvis"))
+    ap.add_argument("--keep", type=int, default=int(os.environ.get("JARVIS_BACKUP_KEEP", "7")))
+    args = ap.parse_args()
+
+    home, dest = Path(args.home), Path(args.dest)
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_dir = dest / stamp
+    tmp_dir = dest / f".{stamp}.partial"
+    os.umask(0o077)
+    tmp_dir.mkdir(parents=True, exist_ok=False)
+
+    manifest = {"created_utc": stamp, "home": str(home), "databases": {}, "errors": {}}
+    ok = True
+    for db in find_databases(home):
+        rel = db.relative_to(home)
+        try:
+            info = backup_one(db, tmp_dir / rel)
+            manifest["databases"][str(rel)] = info
+            if info["integrity"] != "ok":
+                ok = False
+            print(f"{rel}: {info['bytes']} bytes, integrity {info['integrity']}")
+        except sqlite3.Error as exc:
+            ok = False
+            manifest["errors"][str(rel)] = str(exc)
+            print(f"{rel}: FAILED: {exc}", file=sys.stderr)
+    cfg = home / "config.toml"
+    if cfg.is_file():
+        shutil.copy2(cfg, tmp_dir / "config.toml")
+    (tmp_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    tmp_dir.rename(run_dir)
+
+    runs = sorted(p for p in dest.iterdir() if p.is_dir() and not p.name.startswith("."))
+    for old in runs[: max(0, len(runs) - args.keep)]:
+        shutil.rmtree(old)
+    print(f"backup: {run_dir} ({len(manifest['databases'])} databases, keeping {args.keep})")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
