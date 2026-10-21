@@ -177,7 +177,7 @@ the running server, `openjarvis_unraid_hooks.on_server_ready(fn)` gives `fn` the
 app with `app.state.bus`, `.engine`, `.agent` and `.config`;
 `publish_custom` / `subscribe_custom` handle events outside upstream's list
 (for example `persona.interject`); `add_routes` mounts routes (behind the API key under
-`/api/`; `load_floor_config()` reads `/data/custom/floor.toml`. See
+`/api/`); `load_floor_config()` reads `/data/custom/floor.toml`. See
 `custom/examples/floor_probe.py` and `docs/PERSONAS-DESIGN.md`.
 
 ## Scheduled jobs (User Scripts plugin)
