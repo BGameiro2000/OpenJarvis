@@ -184,8 +184,9 @@ as needing a check against the episodes.
   - Finch asks "should we?" and Root asks "why haven't we?".
   - Root cuts in when caution costs Bernardo something. Finch adds the
     caveat when speed would.
-  - They tease, they disagree, and they never undercut each other in front
-    of Bernardo.
+  - They tease, they disagree, and they may undercut each other in front of
+    Bernardo, as they did on the show. The rule is to correct the claim, not
+    the person, and to do it in the open.
 - **Address:** Root calls Finch "Harry" when she is fond of him or needling
   him. Finch calls her "Ms. Groves" when he disapproves and "Root" when he
   does not.
