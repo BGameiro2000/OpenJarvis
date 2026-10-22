@@ -22,6 +22,7 @@ decides if it fires, and how.
 | `correct` | A fact in the reply is wrong; the listener corrects it. Needs pressure 0.75 or more. | After reply |
 | `hand` | The listener raises a hand and waits. `POST /grant` lets it speak. | On grant |
 | `comment` | A side note shown in the HUD, never spoken. Also the catch-all when the proposed act is switched off. | Never |
+| `council` | Before a decision question ("should I", an "or", a price), the council of gods is consulted: three model calls, saved to `council/`. The speaker gets the verdict; an Ananke or Ate flag becomes Root's pressure to cut in. | Before the reply |
 | `duet` | One model call writes both voices as a short script. Cannot be combined with `interrupt`. | Whole turn |
 
 Arbitration: a hard cut beats everything, then a named persona, then the
@@ -72,3 +73,22 @@ classifier instead of the model.
 cd home-jarvis
 python -m pytest -q
 ```
+
+## Council
+
+`home_jarvis/council.py`. Gods: Dionysus (life), Prometheus (academic),
+Daedalus (projects), Ananke and Ate (neurodivergence, a pair), Tyche
+(shopping), Hermes (career), Orpheus (creativity). Not user facing.
+
+- **Router** in code: at most three gods by keywords, plus Ananke and Ate on a
+  purchase with "now" or "tonight" or before 06:00. Every god gets a reason,
+  called or not.
+- **Three model calls** on the review model: round 1 positions, round 2
+  rebuttals, the verdict (decision, confidence, dissent, flags, branches).
+  Model output is cleaned: unknown gods dropped, stances and numbers clamped.
+- **Saved** to `council/YYYY-MM-DD-NNNN.md` (never overwritten) with the full
+  record in a `json council` block; the HUD replays it.
+- **Routes**: `POST /api/custom/council/run` (SSE), `GET /api/custom/council/sims`,
+  `GET /api/custom/council/sims/{sim}`.
+- **Cost**: three extra calls per consulted turn, only on decision questions
+  and only with the `council` mode on (profiles `home_text` and `focus`).
