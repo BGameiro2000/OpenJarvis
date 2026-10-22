@@ -24,9 +24,7 @@ from fastapi.testclient import TestClient
 ROOT = Path(__file__).resolve().parents[1]
 SRC = os.environ.get("HOME_JARVIS_SRC", "")
 if not SRC:
-    pytest.skip(
-        "set HOME_JARVIS_SRC to a home-jarvis checkout", allow_module_level=True
-    )
+    pytest.skip("set HOME_JARVIS_SRC to a home-jarvis checkout", allow_module_level=True)
 sys.path[:0] = [
     SRC,
     os.environ.get("HOOKS_SRC", str(ROOT.parent / "custom")),
@@ -180,15 +178,9 @@ def test_capture_note_and_upload(hud):
 
 def test_council_run_and_replay(hud):
     c, vault = hud
-    evs = sse(
-        c.post(
-            "/api/council/run", json={"question": "Should I buy the A2000 now?"}
-        ).text
-    )
+    evs = sse(c.post("/api/council/run", json={"question": "Should I buy the A2000 now?"}).text)
     kinds = [e["kind"] for e in evs]
-    assert (
-        kinds[0] == "consult" and kinds[-1] == "council_saved" and "verdict" in kinds
-    ), kinds
+    assert kinds[0] == "consult" and kinds[-1] == "council_saved" and "verdict" in kinds, kinds
     sim = evs[-1]["data"]["sim"]
     listed = c.get("/api/council").json()["sims"]
     assert listed[0]["sim"] == sim and listed[0]["verdict"] == "WAIT"
@@ -199,11 +191,7 @@ def test_council_run_and_replay(hud):
 def test_floor_turn_consults_and_root_cuts_in(hud):
     c, _ = hud
     assert c.get("/api/status").json()["mode"] == "floor"
-    evs = sse(
-        c.post(
-            "/api/chat", json={"text": "Should I get the A2000 now, or RAM first?"}
-        ).text
-    )
+    evs = sse(c.post("/api/chat", json={"text": "Should I get the A2000 now, or RAM first?"}).text)
     kinds = [e["kind"] for e in evs]
     assert "consult" in kinds and "interject" in kinds, kinds
     inter = next(e for e in evs if e["kind"] == "interject")
