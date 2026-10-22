@@ -40,7 +40,8 @@ ENV HOME=/cognee-data/home \
     EMBEDDING_DIMENSIONS=384 \
     ENABLE_BACKEND_ACCESS_CONTROL=true \
     REQUIRE_AUTHENTICATION=true \
-    COGNEE_DATASET=vault
+    COGNEE_DATASET=vault \
+    GLINER_AUTO_INSTALL=false
 
 # Unraid nobody:users. Fails the build if the official venv is not readable.
 USER 99:100

@@ -1,0 +1,6 @@
+extend = "../pyproject.toml"
+line-length = 100
+
+[lint]
+# The formatter wraps code; long string literals stay readable as they are.
+extend-ignore = ["E501"]
