@@ -26,7 +26,8 @@ database lives on the cache pool and can be rebuilt from the notes.
 | `patches/` | Build-time fixes to upstream files (`apply.sh` applies them) |
 | `docs/VERIFY.md` | What the code really does, assumptions, test results |
 | `docs/SERVER-TESTS.md` | Runbook for the tests that need the Unraid box |
-| `docs/PERSONAS-DESIGN.md` | Plan for Finch and Root sharing one floor (not built) |
+| `docs/PERSONAS-DESIGN.md` | Plan for Finch and Root sharing one floor (built on branch `home-jarvis`) |
+| `hud/`, `templates/machine-hud.xml` | The Machine HUD container (see `hud/README.md`) |
 
 ## Before you install
 
@@ -199,6 +200,8 @@ Nothing runs on a timer inside the containers. Add these with the User Scripts p
   ```
 
 ## Upgrade
+
+Coming from the first version (u1)? Follow [docs/UPGRADE.md](docs/UPGRADE.md).
 
 1. GitHub, this fork: "Sync fork" with upstream.
    If the build log says a patch is "already" upstream, delete it from `patches/`.

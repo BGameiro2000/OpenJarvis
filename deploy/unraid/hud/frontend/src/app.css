@@ -1,0 +1,72 @@
+/* Tokens: build guide section 11. Nothing else defines colour. */
+:root {
+  --ground: #090b0d;
+  --panel: #0f1215;
+  --rule: #1f252b;
+  --text: #e4e7ea;
+  --muted: #8a949e;
+  --faint: #5f6a74;
+  --finch: #edeae2;
+  --root: #f2b33d;
+  --council: #7fb2e5;
+  --alert: #f0645a;
+  --filed: #6fcf97;
+  --reference: #b7a6e8;
+
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --cond: 'IBM Plex Sans Condensed', 'IBM Plex Mono', sans-serif;
+  --feed: 14px;
+  --panel-size: 12px;
+  --label: 11px;
+  --track: 0.16em;
+  --bracket: 16px;
+  --bracket-w: 2px;
+  --snap: 160ms;
+  --push: 120ms;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--ground); color: var(--text); }
+body { font-family: var(--mono); font-size: var(--panel-size); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+#app { height: 100%; }
+
+.label {
+  font-size: var(--label);
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+button, select, input {
+  font: inherit;
+  color: inherit;
+  border-radius: 0;
+}
+button {
+  min-height: 44px;
+  padding: 0 16px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--muted); }
+button:disabled { color: var(--faint); cursor: not-allowed; }
+button.primary { background: var(--finch); color: var(--ground); border-color: var(--finch); font-weight: 500; }
+button.primary:disabled { background: var(--rule); border-color: var(--rule); color: var(--faint); }
+button.council { border-color: var(--council); color: var(--council); }
+button.small { min-height: 32px; padding: 0 10px; font-size: var(--label); }
+:focus-visible { outline: 2px solid var(--council); outline-offset: 2px; }
+
+a { color: var(--council); }
+
+/* One 1 px scan line when a box appears. */
+@keyframes scan { from { transform: translateY(0); opacity: 1; } to { transform: translateY(var(--scan-h, 120px)); opacity: 0; } }
+@keyframes snap { from { transform: scale(1.35); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes push { from { transform: translateY(-6px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

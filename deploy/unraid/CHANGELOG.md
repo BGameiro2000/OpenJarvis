@@ -3,6 +3,43 @@
 Migration notes for agents maintaining this folder. Newest first. Each entry
 says what changed and what an existing install must do.
 
+## 2026-10-22: OpenJarvis u2, Cognee u2
+
+Images: `openjarvis-unraid:0.0.1.dev88-cf464de-u2`, `cognee-unraid:1.6.5-u2`.
+Same upstream commit and Cognee version as u1; the Unraid layers changed:
+
+- OpenJarvis: startup hooks for custom code in `/data/custom`.
+- Cognee: keyless ingestion (local GLiNER), Mistral, the embedding model
+  fetched at start, and a fixed `cognee-ingest` message.
+
+Upgrading from u1: follow [docs/UPGRADE.md](docs/UPGRADE.md). In short, change
+both tags to `-u2`, copy the custom package, then add the HUD. No data
+migration.
+
+## 2026-10-22: Machine HUD 0.2.0
+
+Image: `machine-hud:0.2.0`. Memory search and graph, intake board, council
+view. Nothing changes in the other two images.
+
+- Update the template tag to `0.2.0` and Apply.
+- Writes (intake scan with apply, escalation decisions, uploads, council runs)
+  need the latest `home_jarvis` from branch `home-jarvis` in `/data/custom`
+  (intake sorter and council). Copy it again and restart OpenJarvis.
+- Optional: `COGNEE_DATASET` (default `vault`).
+- Privacy: chats with people are filed to `reference/chats/`. If Cognee runs
+  with a cloud key, add `reference/chats` to its `COGNEE_EXCLUDE`.
+
+## 2026-10-21: Machine HUD 0.1.0
+
+Image: `machine-hud:0.1.0` (new, third container). Nothing changes in the
+other two images.
+
+- New install only: add `templates/machine-hud.xml`, set
+  `OPENJARVIS_API_KEY`, `COGNEE_API_KEY` and `HUD_PASSWORD`.
+- Finch and Root on one floor need the `home_jarvis` package from branch
+  `home-jarvis` in `/data/custom` and `OPENJARVIS_CUSTOM_MODULES=home_jarvis`.
+  Without it the HUD runs in plain mode (Finch only).
+
 ## 2026-10-21: first version
 
 Images: `openjarvis-unraid:0.0.1.dev88-cf464de-u1` (OpenJarvis commit

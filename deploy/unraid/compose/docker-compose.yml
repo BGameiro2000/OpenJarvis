@@ -23,7 +23,7 @@ x-hardening: &hardening
 services:
   cognee:
     <<: *hardening
-    image: ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u1
+    image: ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u2
     container_name: cognee
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -43,7 +43,7 @@ services:
 
   openjarvis:
     <<: *hardening
-    image: ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u1
+    image: ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u2
     container_name: openjarvis
     depends_on:
       - cognee

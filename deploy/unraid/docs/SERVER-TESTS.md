@@ -60,8 +60,8 @@ wget -q "$B/cognee.xml"     -O /boot/config/plugins/dockerMan/templates-user/my-
 wget -q "$B/openjarvis.xml" -O /boot/config/plugins/dockerMan/templates-user/my-openjarvis.xml
 
 # Images
-docker pull ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u1
-docker pull ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u1
+docker pull ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u2
+docker pull ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u2
 ```
 
 Expected: `docker network ls` lists `jarvis-net`; both pulls end with
@@ -245,8 +245,8 @@ Data must be intact: `config.toml`, `.api_key`, the notes and every database.
 ```bash
 git clone -b unraid-packaging https://github.com/BGameiro2000/OpenJarvis /tmp/oj-tests
 bash /tmp/oj-tests/deploy/unraid/tests/wiring.sh \
-  ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u1 \
-  ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u1 /tmp/oj-wiring
+  ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u2 \
+  ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u2 /tmp/oj-wiring
 rm -rf /tmp/oj-tests /tmp/oj-wiring
 ```
 
@@ -254,3 +254,53 @@ Uses its own network (`jarvis-wiring`) and throwaway folders; it does not touch
 the real containers or data, but it uses the container name `cognee` and port
 18000, so stop the real `cognee` container first and start it again after.
 Expected: "ALL WIRING TESTS PASSED".
+
+### S12. Machine HUD
+
+Install `templates/machine-hud.xml` with `HUD_DEMO=1` first.
+
+1. Open `http://<server>:8080`, log in, send "Should I get the A2000 now?".
+   Expected: Root cuts in, Finch's last sentence shows struck through, the
+   log shows INTERJ and TURN end.
+2. `docker exec machine-hud id -u` prints 99;
+   `docker exec machine-hud sh -c 'grep CapEff /proc/1/status'` shows all zeros;
+   `docker exec machine-hud touch /vault/x` fails.
+3. In the browser dev tools, search the page source and network responses
+   for the OpenJarvis key. Expected: not found.
+4. Set `HUD_DEMO=0`, Apply. Without the floor package the top bar shows
+   FLOOR grey and mode PLAIN; a question gets THINKING, a TOOL line with a
+   duration if a tool ran, SPEAKING, then LISTENING (real key, real cost).
+5. Copy `home_jarvis` from branch `home-jarvis` to
+   `/mnt/cache/appdata/openjarvis/custom/`, set
+   `OPENJARVIS_CUSTOM_MODULES=home_jarvis` on openjarvis, restart it.
+   Expected in its log: `[home_jarvis] floor ready`. The HUD shows FLOOR
+   green and mode FLOOR; both cards change state during a turn.
+6. `docker stop cognee`: the HUD keeps working, COGNEE turns red.
+   `docker start cognee` after.
+7. On the phone over Tailscale: the page fits the width, the feed is first.
+
+### S13. HUD memory, intake and council (HUD 0.2.0)
+
+Needs the latest `home_jarvis` in `/mnt/cache/appdata/openjarvis/custom/` and
+OpenJarvis restarted. Expected in its log: `floor ready`, `intake ready`.
+
+1. Memory: search a word you know is in a note. Expected: hits in under a
+   second, tagged VAULT, GRAPH or BOTH (GRAPH needs `cognee-ingest` first). Pick
+   a hit: the graph shows its neighbours; pick it again: same picture.
+2. `docker stop cognee`, search again: hits still come (VAULT), the graph
+   panel says Cognee is not reachable and shows the wikilink graph.
+   `docker start cognee`.
+3. Intake: drop a short note, a WhatsApp export (`.txt`) and a Claude export
+   (`.zip`) on the board. Dry run: the chat and the AI export show
+   `rule:chat` and `rule:ai_chat`; nothing moves in `/mnt/user/TheMachine/inbox`.
+4. Apply. Expected: notes in `reference/chats/`, `reference/ai-chats/`, list
+   lines appended, originals in `inbox/archive/YYYY-MM/`, lines in
+   `inbox/.decision-log.jsonl`, FILE lines in the HUD log.
+5. Drop a voice memo. Expected: an escalation "needs a transcript" (no speech
+   backend); "Leave in inbox" keeps it there.
+6. Council: run "Should I buy X now?". Expected: called gods with reasons,
+   positions, a verdict, a new `council/YYYY-MM-DD-NNNN.md` in the vault.
+   Cost: three model calls.
+7. Main view: ask a "should I ... now" purchase question. Expected: COUNCIL
+   lines in the log, the chips light up, Root may cut in with source
+   `council:ate`.
