@@ -92,3 +92,12 @@ Daedalus (projects), Ananke and Ate (neurodivergence, a pair), Tyche
   `GET /api/custom/council/sims/{sim}`.
 - **Cost**: three extra calls per consulted turn, only on decision questions
   and only with the `council` mode on (profiles `home_text` and `focus`).
+
+## Personas: SOUL files
+
+`vault/personas/finch/SOUL.md` and `vault/personas/root/SOUL.md` are modelled
+on Harold Finch and Root from Person of Interest, as they were by seasons 4
+and 5. The research behind them (arcs season by season, what each SOUL keeps
+and leaves out, sources) is in `docs/PERSONAS-POI.md`. Copy them to
+`/mnt/user/TheMachine/personas/<name>/SOUL.md`; the floor reads the first
+4,000 characters of each.
