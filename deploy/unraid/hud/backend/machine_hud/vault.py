@@ -35,6 +35,7 @@ FOLDER_TYPE = {
     "reports": "report",
     "decisions": "decision",
 }
+COUNCIL_BLOCK = re.compile(r"```json council\s*\n.*?\n```", re.S)
 HISTORY_HEAD = re.compile(r"^#{1,6}\s*(history|log|changelog|timeline)\b", re.I | re.M)
 
 
@@ -233,6 +234,8 @@ class VaultIndex:
             raw = fh.read(NOTE_CAP + 1)
         text = raw[:NOTE_CAP].decode("utf-8", errors="replace")
         meta, body = parse_frontmatter(text)
+        # A council record is replayed by the council view, not shown as JSON.
+        body = COUNCIL_BLOCK.sub("(simulation record: open it in the council view)", body)
         m = HISTORY_HEAD.search(body)
         current, history = (body[: m.start()], body[m.start() :]) if m else (body, "")
         d = self.docs.get(rel)

@@ -358,3 +358,10 @@ def test_demo_council_run_and_floor_consults(tmp_path):
 def test_search_handles_odd_queries(tmp_path, q):
     c, _, _ = client(tmp_path)
     assert c.get("/api/memory/search", params={"q": q, "mode": "vault"}).status_code == 200
+
+
+def test_first_search_maps_graph_hits(tmp_path):
+    # The index must be built before graph hits are mapped to vault paths.
+    c, _, _ = client(tmp_path, demo=True)
+    r = c.get("/api/memory/search", params={"q": "RAM upgrade"}).json()
+    assert "BOTH" in {h["tag"] for h in r["hits"]}

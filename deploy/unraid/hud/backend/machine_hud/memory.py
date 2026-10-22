@@ -172,6 +172,8 @@ class Memory:
     ) -> dict[str, Any]:
         t0 = time.perf_counter()
         sources: dict[str, Any] = {}
+        # Both sides need the index: graph hits map back to vault paths through it.
+        await asyncio.to_thread(self.vault.refresh)
 
         async def run_vault() -> list[dict]:
             t = time.perf_counter()
