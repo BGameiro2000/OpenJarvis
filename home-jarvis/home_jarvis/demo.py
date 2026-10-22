@@ -7,6 +7,7 @@ else round-robin, so any message gets a plausible demo turn.
 from __future__ import annotations
 
 import itertools
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -134,7 +135,7 @@ class DemoBrain:
 
     def reply(self, persona, user_text, history, *, instruction=""):
         self.calls.append(("reply", persona))
-        if instruction:  # a build-back line
+        if "built on the answer" in instruction:  # a build-back line
             return self._exchange.pop(0) if self._exchange else "PASS"
         sc = self._current = self._pick(user_text)
         self._exchange = list(sc.exchange)
@@ -148,6 +149,113 @@ class DemoBrain:
         if review.get("act") == "interrupt":
             review["at"] = min(review.get("at", 0), max(0, len(sentences) - 2))
         return review
+
+    def ask(self, system, prompt, max_tokens=600):
+        """Canned council rounds, so the council runs in demo mode too."""
+        self.calls.append(("ask", prompt.split(".", 1)[0]))
+        shopping = any(w in prompt.lower() for w in ("a2000", "gpu", "buy", "ram"))
+        if prompt.startswith("ROUND 1"):
+            if shopping:
+                return json.dumps(
+                    {
+                        "positions": [
+                            {
+                                "god": "tyche",
+                                "stance": "for",
+                                "confidence": 0.62,
+                                "argument": "Two used A2000 listings under the 350 euro ceiling; the 310 one is fair.",
+                                "sources": ["shopping/watch.md"],
+                            },
+                            {
+                                "god": "daedalus",
+                                "stance": "against",
+                                "confidence": 0.71,
+                                "argument": "RAM unblocks more of the current plan: Cognee and the index are memory bound.",
+                                "sources": ["wiki/home-server.md"],
+                            },
+                            {
+                                "god": "ananke",
+                                "stance": "flag",
+                                "confidence": 0.74,
+                                "argument": "Three hardware tabs since 02:00. This is the research loop pattern.",
+                            },
+                            {
+                                "god": "ate",
+                                "stance": "flag",
+                                "confidence": 0.74,
+                                "argument": "A purchase decided after midnight is reversed half the time.",
+                            },
+                        ]
+                    }
+                )
+            return json.dumps(
+                {
+                    "positions": [
+                        {
+                            "god": g,
+                            "stance": "for",
+                            "confidence": 0.6,
+                            "argument": "No reason against it, with care.",
+                        }
+                        for g in (
+                            "daedalus",
+                            "dionysus",
+                            "prometheus",
+                            "hermes",
+                            "orpheus",
+                            "tyche",
+                        )
+                    ]
+                }
+            )
+        if prompt.startswith("ROUND 2"):
+            if shopping:
+                return json.dumps(
+                    {
+                        "rebuttals": [
+                            {
+                                "god": "tyche",
+                                "stance": "wait",
+                                "confidence": 0.55,
+                                "argument": "Listings stay up for days. Watching costs nothing; I park both.",
+                            },
+                        ]
+                    }
+                )
+            return json.dumps({"rebuttals": []})
+        if shopping:
+            return json.dumps(
+                {
+                    "decision": "WAIT",
+                    "confidence": 0.78,
+                    "summary": "Buy nothing tonight. Park both listings, decide Saturday morning; RAM first if only one.",
+                    "dissent": [
+                        {"god": "tyche", "argument": "The 310 euro listing is a good price."}
+                    ],
+                    "flags": [
+                        {
+                            "god": "ate",
+                            "text": "a late night research loop, three hardware tabs since 02:00",
+                            "pressure": 0.74,
+                        }
+                    ],
+                    "branches": [
+                        {"name": "Buy the A2000 now", "score": 0.31, "note": "impulse window"},
+                        {"name": "RAM upgrade first", "score": 0.66, "note": "unblocks the plan"},
+                        {"name": "Wait until Saturday", "score": 0.78, "note": "same prices"},
+                    ],
+                }
+            )
+        return json.dumps(
+            {
+                "decision": "GO",
+                "confidence": 0.64,
+                "summary": "Go ahead, small first step.",
+                "dissent": [],
+                "flags": [],
+                "branches": [],
+            }
+        )
 
     def duet(self, first, user_text, history):
         self.calls.append(("duet", first))

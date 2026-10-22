@@ -75,6 +75,8 @@ class Brain(Protocol):
         self, first: str, user_text: str, history: list[tuple[str, str]]
     ) -> list[tuple[str, str]]: ...
 
+    def ask(self, system: str, prompt: str, max_tokens: int) -> str: ...
+
 
 def parse_review(raw: str) -> dict[str, Any]:
     """Parse the review JSON, tolerating code fences and prose around it."""
@@ -158,6 +160,11 @@ class EngineBrain:
         ]
         return parse_review(self._call(messages, self.review_model, 300))
 
+    def ask(self, system, prompt, max_tokens=600):
+        """A plain call (no persona), used by the council. Uses the review model."""
+        messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
+        return self._call(messages, self.review_model, max_tokens)
+
     def duet(self, first, user_text, history):
         system = (
             system_prompt(PERSONAS["finch"], self.vault, role="speaker")
@@ -177,7 +184,8 @@ class ScriptedBrain:
     ``duets``: list of [(speaker, text), ...] scripts.
     """
 
-    def __init__(self, replies=None, reviews=None, duets=None):
+    def __init__(self, replies=None, reviews=None, duets=None, asks=None):
+        self.asks = list(asks or [])
         self.replies = {k: list(v) for k, v in (replies or {}).items()}
         self.reviews = list(reviews or [])
         self.duets = list(duets or [])
@@ -192,6 +200,11 @@ class ScriptedBrain:
         self.calls.append(("review", listener))
         raw = self.reviews.pop(0) if self.reviews else {"act": "none"}
         return parse_review(json.dumps(raw))
+
+    def ask(self, system, prompt, max_tokens=600):
+        self.calls.append(("ask", prompt.split(".", 1)[0]))
+        item = self.asks.pop(0) if self.asks else {}
+        return item if isinstance(item, str) else json.dumps(item)
 
     def duet(self, first, user_text, history):
         self.calls.append(("duet", first))
