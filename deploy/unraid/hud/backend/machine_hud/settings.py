@@ -25,6 +25,13 @@ class Settings:
     plain_persona: str = "finch"
     static_dir: Path = Path("/app")
     vault: Path = Path("/vault")
+    demo_vault: Path = Path("/opt/hud/demo-vault")
+    cognee_dataset: str = "vault"
+
+    @property
+    def vault_root(self) -> Path:
+        """The vault the HUD reads: the bundled demo vault in demo mode."""
+        return self.demo_vault if self.demo else self.vault
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -43,4 +50,6 @@ class Settings:
             plain_persona=os.environ.get("HUD_PLAIN_PERSONA", cls.plain_persona),
             static_dir=Path(os.environ.get("HUD_STATIC_DIR", str(cls.static_dir))),
             vault=Path(os.environ.get("HUD_VAULT", str(cls.vault))),
+            demo_vault=Path(os.environ.get("HUD_DEMO_VAULT", str(cls.demo_vault))),
+            cognee_dataset=os.environ.get("COGNEE_DATASET", cls.cognee_dataset),
         )

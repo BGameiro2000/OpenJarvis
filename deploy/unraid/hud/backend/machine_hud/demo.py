@@ -181,6 +181,7 @@ class DemoFloor:
         self.pending_hand: dict[str, Any] | None = None
         self.spoken_today = 0
         self.holder = "finch"
+        self.council = None  # DemoCouncil, set by the app: consulted on the GPU question
         self._lock = asyncio.Lock()
 
     # -------------------------------------------------------------- state
@@ -301,6 +302,9 @@ class DemoFloor:
         self._state(listener, "LISTENING")
         await asyncio.sleep(p * 2)
         await self._tool(speaker, "cognee_recall", 0.42)
+        if self.council is not None and sc.source.startswith("council"):
+            await self._tool(speaker, "consult_council", 0.1)
+            await self.council.run(text)
 
         act = sc.act
         if act and time.time() < self.muted.get(listener, 0) and act != "cut":

@@ -135,6 +135,33 @@ class Upstream:
                 except json.JSONDecodeError:
                     continue
 
+    # ------------------------------------------------- relays to custom code
+    async def oj_json(self, method: str, path: str, body: Any = None) -> httpx.Response:
+        return await self.oj.request(
+            method, path, json=body, timeout=httpx.Timeout(10.0, read=300.0)
+        )
+
+    async def oj_sse(self, path: str, body: Any) -> AsyncIterator[dict[str, Any]]:
+        async with self.oj.stream("POST", path, json=body) as resp:
+            if resp.status_code >= 400:
+                detail = (await resp.aread()).decode(errors="replace")[:300]
+                raise httpx.HTTPStatusError(detail, request=resp.request, response=resp)
+            async for _, data in sse_lines(resp):
+                try:
+                    yield json.loads(data)
+                except json.JSONDecodeError:
+                    continue
+
+    async def oj_upload(
+        self, path: str, stream: AsyncIterator[bytes], content_type: str
+    ) -> httpx.Response:
+        return await self.oj.post(
+            path,
+            content=stream,
+            headers={"Content-Type": content_type},
+            timeout=httpx.Timeout(30.0, read=600.0, write=600.0),
+        )
+
     # -------------------------------------------------------------- plain
     async def plain_chat(
         self, text: str, history: list[dict[str, str]], turn: int
