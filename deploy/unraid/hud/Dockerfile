@@ -28,6 +28,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY backend/requirements.txt /opt/hud/requirements.txt
 RUN pip install --no-cache-dir -r /opt/hud/requirements.txt
 COPY backend/machine_hud /opt/hud/machine_hud
+COPY demo-vault /opt/hud/demo-vault
 COPY --from=web /web/dist /app
 USER 99:100
 EXPOSE 8080

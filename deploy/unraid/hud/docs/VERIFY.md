@@ -95,6 +95,22 @@ and the HUD backend relays that feed.
   (`HUD_NODE_IMAGE`, `HUD_PYTHON_IMAGE`). The digests are the ones the first
   CI build resolved (run 39683803814).
 
+## Memory, intake and council (steps 3 to 7)
+
+- **Search speed**: the vault index is in memory (SQLite FTS5); a search on
+  the demo vault takes a few milliseconds, and Cognee's CHUNKS search adds its
+  own time, shown separately. Neither calls a model.
+- **Cytoscape and the CSP**: Cytoscape injects one inline `<style>` unless an
+  element with id `__________cytoscape_stylesheet` exists. `index.html` links
+  `cytoscape.css` with that id, so nothing inline is needed and the CSP stays
+  without `unsafe-inline`. Cytoscape is loaded only by the Memory view.
+- **Writes**: the HUD's intake and council buttons call the custom package in
+  OpenJarvis (`/api/custom/intake/*`, `/api/custom/council/*`). Without it
+  the board still shows the inbox and the decision log from the vault, and
+  replays still work; the buttons say the sorter or council is not loaded.
+- **"Console view"** in the request was read as the council view (guide
+  step 7).
+
 ## CI result
 
 Run 39683803814, job `hud`: backend tests (10), frontend tests (5), image

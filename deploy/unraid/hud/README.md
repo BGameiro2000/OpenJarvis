@@ -4,9 +4,27 @@ A screen for the OpenJarvis and Cognee containers, in its own container
 (`machine-hud`, port 8080). Build guide: `02-machine-hud-build-guide.md`.
 Findings H1 to H5 and the choices made: [docs/VERIFY.md](docs/VERIFY.md).
 
-Built so far: guide steps 1 (shell) and 2 (events), plus the persona view of
-step 6 when the floor package is loaded. Memory, intake, council and voice
-come later; their places on the screen say so.
+Built so far: guide steps 1 to 7 (shell, events, memory, intake board and
+actions, personas, council). Voice (step 8) is not built. The reasoning for
+memory, intake and council, and the API contracts with the custom package,
+are in [docs/DESIGN.md](docs/DESIGN.md).
+
+Four views, as tabs in the top bar:
+
+- **Main**: personas, the floor, the feed, the decision log.
+- **Memory**: hybrid search (vault text plus Cognee, merged, each hit tagged
+  VAULT, GRAPH or BOTH, no model call, latency shown), filters, the two hop
+  graph (Cytoscape, stable layout, shape by type), a timeline scrubber, and
+  an inspector (current truth on top, dated history below, open in Obsidian,
+  ask Finch). If Cognee is down the graph says why and falls back to the
+  vault's wikilinks.
+- **Intake**: capture (upload or quick note), then every inbox file through
+  classify, validate and file, the dry run badge, routes today, escalation
+  cards (file as proposed, add a list, edit the envelope, leave), the closed
+  list menu and the decision log.
+- **Council**: saved simulations replayed from `council/*.md`, the router
+  with a reason for every god, round 1 panels (Ananke and Ate paired), round 2
+  rebuttals, the verdict typed out with dissent and flags, scenario branches.
 
 ## What you see
 
@@ -31,7 +49,7 @@ come later; their places on the screen say so.
 |---|---|---|
 | `floor` | OpenJarvis has the `home_jarvis` package loaded (branch `home-jarvis`) | Finch and Root, through the floor manager |
 | `plain` | the package is not loaded | Finch only, over `/v1/chat/completions` (streamed) |
-| `demo` | `HUD_DEMO=1` | scripted Finch and Root, no upstream, no key, no cost |
+| `demo` | `HUD_DEMO=1` | scripted Finch and Root, sorter and council, a bundled demo vault; no upstream, no key, no cost |
 
 To get `floor` mode on the server: copy `home-jarvis/home_jarvis/` from the
 `home-jarvis` branch to `/mnt/cache/appdata/openjarvis/custom/home_jarvis`,

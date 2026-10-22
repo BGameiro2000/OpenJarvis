@@ -50,6 +50,19 @@ grep -c '"kind":"interject"' "$WORK/turn.sse" >/dev/null || fail "no interjectio
 grep -c '"kind":"yield"' "$WORK/turn.sse" >/dev/null || fail "no yield in demo turn"
 echo "ok   demo turn: Root cuts in, Finch yields"
 
+curl -fsS "${AUTH[@]}" "http://127.0.0.1:$PORT/api/memory/search?q=RAM+upgrade" > "$WORK/search.json"
+python3 - "$WORK/search.json" <<'PY' || fail "hybrid search"
+import json, sys
+r = json.load(open(sys.argv[1]))
+assert r["hits"] and "BOTH" in {h["tag"] for h in r["hits"]}, r
+assert r["ms"] < 1000, r["ms"]
+PY
+curl -fsS "${AUTH[@]}" "http://127.0.0.1:$PORT/api/graph?path=wiki/home-server.md" | grep -c '"nodes":\[{' >/dev/null || fail "graph"
+curl -fsS "${AUTH[@]}" "http://127.0.0.1:$PORT/api/council/2026-10-21-0381" | grep -c '"decision":"WAIT"' >/dev/null || fail "council replay"
+curl -fsS "${AUTH[@]}" -X POST -H 'Content-Type: application/json' -d '{"apply":false}' \
+  "http://127.0.0.1:$PORT/api/intake/scan" | grep -c '"dry_run":true' >/dev/null || fail "intake dry run"
+echo "ok   memory search (BOTH tags, under a second), graph, council replay, intake dry run"
+
 curl -fsS "${AUTH[@]}" "http://127.0.0.1:$PORT/api/status" > "$WORK/status.json"
 if cat "$WORK/status.json" "$WORK/turn.sse" "$WORK/index.html" | grep -c "oj-dummy-key-not-real" >/dev/null; then
   fail "key leaked to the browser"
