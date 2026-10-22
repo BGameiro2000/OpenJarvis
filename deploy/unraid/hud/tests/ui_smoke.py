@@ -37,8 +37,13 @@ def main() -> int:
     problems: list[str] = []
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=EXE) if EXE else p.chromium.launch()
-        page = browser.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=2)
-        page.on("console", lambda m: m.type == "error" and problems.append(f"console: {m.text}"))
+        page = browser.new_page(
+            viewport={"width": 1440, "height": 900}, device_scale_factor=2
+        )
+        page.on(
+            "console",
+            lambda m: m.type == "error" and problems.append(f"console: {m.text}"),
+        )
         page.on("pageerror", lambda e: problems.append(f"pageerror: {e}"))
         page.goto(URL)
         page.wait_for_selector(".conn.live", timeout=10000)
@@ -95,7 +100,9 @@ def main() -> int:
         if page.locator(".dec").inner_text() != "WAIT":
             problems.append("council replay verdict is not WAIT")
         if page.locator(".god.called").count() != 3:
-            problems.append(f"expected 3 called cards, got {page.locator('.god.called').count()}")
+            problems.append(
+                f"expected 3 called cards, got {page.locator('.god.called').count()}"
+            )
         time.sleep(3)
         page.screenshot(path=str(OUT / "hud-council.png"), full_page=True)
 
@@ -108,10 +115,14 @@ def main() -> int:
         if anim != "none":
             problems.append(f"reduced motion still animates: {anim}")
 
-        phone = browser.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=2)
+        phone = browser.new_page(
+            viewport={"width": 390, "height": 844}, device_scale_factor=2
+        )
         phone.goto(URL)
         phone.wait_for_selector(".conn.live", timeout=10000)
-        overflow = phone.evaluate("document.documentElement.scrollWidth - window.innerWidth")
+        overflow = phone.evaluate(
+            "document.documentElement.scrollWidth - window.innerWidth"
+        )
         if overflow > 0:
             problems.append(f"phone view scrolls sideways by {overflow}px")
         phone.screenshot(path=str(OUT / "hud-phone.png"), full_page=False)

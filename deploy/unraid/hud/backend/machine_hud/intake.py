@@ -106,7 +106,7 @@ def summarize(inbox: list[dict], log: list[dict], pending: int | None = None) ->
         1
         for r in log
         if str(r.get("ts", "")).startswith(today)
-        and r.get("decision") in ("filed", "merged")
+        and r.get("decision") in ("filed", "merged", "partial")
         and not r.get("dry_run")
     )
     routes: dict[str, int] = {}

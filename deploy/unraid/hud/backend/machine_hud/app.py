@@ -76,6 +76,17 @@ class QuestionIn(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
 
 
+def _detail(detail: Any) -> str:
+    """The sorter's refusal as one readable line (it may send the failed checks)."""
+    if isinstance(detail, dict):
+        failed = [c.get("name", "") for c in detail.get("checks") or [] if not c.get("ok")]
+        msg = str(detail.get("error") or "refused")
+        return msg + (f" (failed: {', '.join(failed)})" if failed else "")
+    if isinstance(detail, list):  # FastAPI validation errors
+        return "; ".join(str(d.get("msg", d)) if isinstance(d, dict) else str(d) for d in detail)
+    return str(detail)
+
+
 def _sse(ev: dict[str, Any]) -> str:
     return f"data: {json.dumps(ev, separators=(',', ':'))}\n\n"
 
@@ -370,7 +381,7 @@ def create_app(
         except ValueError:
             data = {"detail": r.text[:300]}
         if r.status_code >= 400:
-            raise HTTPException(r.status_code, data.get("detail", "sorter error"))
+            raise HTTPException(r.status_code, _detail(data.get("detail", "sorter error")))
         return data
 
     @app.get("/api/intake")

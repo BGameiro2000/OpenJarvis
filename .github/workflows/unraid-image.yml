@@ -185,6 +185,18 @@ jobs:
           /tmp/hudvenv/bin/pip install -q -r requirements.txt pytest==8.3.4 playwright==1.55.0
           /tmp/hudvenv/bin/python -m pytest -q
 
+      # The HUD backend against the real floor, intake and council routers.
+      - name: Checkout the custom package (home-jarvis)
+        uses: actions/checkout@v4
+        with:
+          ref: home-jarvis
+          path: hj
+
+      - name: Contract test with the custom package
+        run: |
+          PYTHONPATH=src HOME_JARVIS_SRC=hj/home-jarvis \
+            /tmp/hudvenv/bin/python -m pytest -q -p no:cacheprovider deploy/unraid/hud/tests/contract_test.py
+
       - name: Build HUD image
         uses: docker/build-push-action@v6
         with:
