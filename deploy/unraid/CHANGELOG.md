@@ -3,6 +3,19 @@
 Migration notes for agents maintaining this folder. Newest first. Each entry
 says what changed and what an existing install must do.
 
+## 2026-10-22: Machine HUD 0.2.0
+
+Image: `machine-hud:0.2.0`. Memory search and graph, intake board, council
+view. Nothing changes in the other two images.
+
+- Update the template tag to `0.2.0` and Apply.
+- Writes (intake scan with apply, escalation decisions, uploads, council runs)
+  need the latest `home_jarvis` from branch `home-jarvis` in `/data/custom`
+  (intake sorter and council). Copy it again and restart OpenJarvis.
+- Optional: `COGNEE_DATASET` (default `vault`).
+- Privacy: chats with people are filed to `reference/chats/`. If Cognee runs
+  with a cloud key, add `reference/chats` to its `COGNEE_EXCLUDE`.
+
 ## 2026-10-21: Machine HUD 0.1.0
 
 Image: `machine-hud:0.1.0` (new, third container). Nothing changes in the

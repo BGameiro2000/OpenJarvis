@@ -278,3 +278,29 @@ Install `templates/machine-hud.xml` with `HUD_DEMO=1` first.
 6. `docker stop cognee`: the HUD keeps working, COGNEE turns red.
    `docker start cognee` after.
 7. On the phone over Tailscale: the page fits the width, the feed is first.
+
+### S13. HUD memory, intake and council (HUD 0.2.0)
+
+Needs the latest `home_jarvis` in `/mnt/cache/appdata/openjarvis/custom/` and
+OpenJarvis restarted. Expected in its log: `floor ready`, `intake ready`.
+
+1. Memory: search a word you know is in a note. Expected: hits in under a
+   second, tagged VAULT, GRAPH or BOTH (GRAPH needs `cognee-ingest` first). Pick
+   a hit: the graph shows its neighbours; pick it again: same picture.
+2. `docker stop cognee`, search again: hits still come (VAULT), the graph
+   panel says Cognee is not reachable and shows the wikilink graph.
+   `docker start cognee`.
+3. Intake: drop a short note, a WhatsApp export (`.txt`) and a Claude export
+   (`.zip`) on the board. Dry run: the chat and the AI export show
+   `rule:chat` and `rule:ai_chat`; nothing moves in `/mnt/user/TheMachine/inbox`.
+4. Apply. Expected: notes in `reference/chats/`, `reference/ai-chats/`, list
+   lines appended, originals in `inbox/archive/YYYY-MM/`, lines in
+   `inbox/.decision-log.jsonl`, FILE lines in the HUD log.
+5. Drop a voice memo. Expected: an escalation "needs a transcript" (no speech
+   backend); "Leave in inbox" keeps it there.
+6. Council: run "Should I buy X now?". Expected: called gods with reasons,
+   positions, a verdict, a new `council/YYYY-MM-DD-NNNN.md` in the vault.
+   Cost: three model calls.
+7. Main view: ask a "should I ... now" purchase question. Expected: COUNCIL
+   lines in the log, the chips light up, Root may cut in with source
+   `council:ate`.
