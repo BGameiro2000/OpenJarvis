@@ -201,6 +201,8 @@ Nothing runs on a timer inside the containers. Add these with the User Scripts p
 
 ## Upgrade
 
+Coming from the first version (u1)? Follow [docs/UPGRADE.md](docs/UPGRADE.md).
+
 1. GitHub, this fork: "Sync fork" with upstream.
    If the build log says a patch is "already" upstream, delete it from `patches/`.
 2. In one commit, set `OPENJARVIS_COMMIT` and `OPENJARVIS_VERSION` in

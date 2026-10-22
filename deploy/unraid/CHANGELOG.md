@@ -3,6 +3,19 @@
 Migration notes for agents maintaining this folder. Newest first. Each entry
 says what changed and what an existing install must do.
 
+## 2026-10-22: OpenJarvis u2, Cognee u2
+
+Images: `openjarvis-unraid:0.0.1.dev88-cf464de-u2`, `cognee-unraid:1.6.5-u2`.
+Same upstream commit and Cognee version as u1; the Unraid layers changed:
+
+- OpenJarvis: startup hooks for custom code in `/data/custom`.
+- Cognee: keyless ingestion (local GLiNER), Mistral, the embedding model
+  fetched at start, and a fixed `cognee-ingest` message.
+
+Upgrading from u1: follow [docs/UPGRADE.md](docs/UPGRADE.md). In short, change
+both tags to `-u2`, copy the custom package, then add the HUD. No data
+migration.
+
 ## 2026-10-22: Machine HUD 0.2.0
 
 Image: `machine-hud:0.2.0`. Memory search and graph, intake board, council
