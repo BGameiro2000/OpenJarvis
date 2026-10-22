@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>openjarvis</Name>
-  <Repository>ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u1</Repository>
+  <Repository>ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u2</Repository>
   <Registry>https://github.com/BGameiro2000/OpenJarvis/pkgs/container/openjarvis-unraid</Registry>
   <Network>jarvis-net</Network>
   <MyIP/>

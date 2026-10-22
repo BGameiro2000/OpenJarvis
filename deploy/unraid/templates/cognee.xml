@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>cognee</Name>
-  <Repository>ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u1</Repository>
+  <Repository>ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u2</Repository>
   <Registry>https://github.com/BGameiro2000/OpenJarvis/pkgs/container/cognee-unraid</Registry>
   <Network>jarvis-net</Network>
   <MyIP/>

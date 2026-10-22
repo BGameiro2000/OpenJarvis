@@ -60,8 +60,8 @@ wget -q "$B/cognee.xml"     -O /boot/config/plugins/dockerMan/templates-user/my-
 wget -q "$B/openjarvis.xml" -O /boot/config/plugins/dockerMan/templates-user/my-openjarvis.xml
 
 # Images
-docker pull ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u1
-docker pull ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u1
+docker pull ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u2
+docker pull ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u2
 ```
 
 Expected: `docker network ls` lists `jarvis-net`; both pulls end with
@@ -245,8 +245,8 @@ Data must be intact: `config.toml`, `.api_key`, the notes and every database.
 ```bash
 git clone -b unraid-packaging https://github.com/BGameiro2000/OpenJarvis /tmp/oj-tests
 bash /tmp/oj-tests/deploy/unraid/tests/wiring.sh \
-  ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u1 \
-  ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u1 /tmp/oj-wiring
+  ghcr.io/bgameiro2000/openjarvis-unraid:0.0.1.dev88-cf464de-u2 \
+  ghcr.io/bgameiro2000/cognee-unraid:1.6.5-u2 /tmp/oj-wiring
 rm -rf /tmp/oj-tests /tmp/oj-wiring
 ```
 
