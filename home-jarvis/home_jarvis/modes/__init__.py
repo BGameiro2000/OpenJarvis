@@ -87,6 +87,8 @@ class TurnContext:
     config: Any
     named: str = ""
     signals: dict[str, float] = field(default_factory=dict)
+    # Ananke or Ate flags from a council consulted this turn: {god, text, pressure}.
+    flags: list[dict[str, Any]] = field(default_factory=list)
 
 
 def named_persona(text: str) -> str:
@@ -141,6 +143,44 @@ def _from_review(ctx: TurnContext, act: str, action: str, mode: str) -> list[Pro
     ]
 
 
+def _from_flags(ctx: TurnContext, mode: str) -> list[Proposal]:
+    """A council flag (Ananke or Ate) becomes Root's pressure to cut in.
+
+    Root is the protective voice; when Root itself is speaking, the flag is
+    already in its instructions, so nothing is proposed.
+    """
+    if ctx.listener != "root" or not ctx.flags:
+        return []
+    f = max(ctx.flags, key=lambda x: x.get("pressure", 0.0))
+    god = str(f.get("god", "ate"))
+    return [
+        Proposal(
+            persona="root",
+            action="interject",
+            pressure=float(f.get("pressure", 0.0)),
+            source=f"council:{god}",
+            text=f"Interjecting. {god.title()} flagged {f.get('text', 'a pattern')}. "
+            "Buy nothing tonight."
+            if "buy" in ctx.user_text.lower() or "get" in ctx.user_text.lower()
+            else f"Interjecting. {god.title()} flagged {f.get('text', 'a pattern')}.",
+            at=max(0, min(1, len(ctx.sentences) - 2)),
+            mode=mode,
+            reason="council flag",
+        )
+    ]
+
+
+@ModeRegistry.register("council")
+class CouncilMode(Mode):
+    """Consult the council before a decision question. The floor runs it
+    (it needs the model); this entry only makes the mode switchable."""
+
+    name, phase = "council", "pre_turn"
+
+    def propose(self, ctx):
+        return []
+
+
 @ModeRegistry.register("bidding")
 class Bidding(Mode):
     """S7: who answers first. Rules only: a named persona wins outright,
@@ -178,7 +218,7 @@ class Interrupt(Mode):
     name, phase = "interrupt", "during_turn"
 
     def propose(self, ctx):
-        return _from_review(ctx, "interrupt", "interject", self.name)
+        return _from_review(ctx, "interrupt", "interject", self.name) + _from_flags(ctx, self.name)
 
 
 @ModeRegistry.register("hard_cut")

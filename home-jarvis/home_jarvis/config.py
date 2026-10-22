@@ -42,6 +42,7 @@ ALIASES = {
 
 ALL_MODES = (
     "bidding",
+    "council",
     "duet",
     "interrupt",
     "hard_cut",
@@ -54,13 +55,13 @@ ALL_MODES = (
 
 DEFAULT_PROFILES: dict[str, list[str]] = {
     # Text chat on the HUD: the personas talk to each other a lot.
-    "home_text": ["bidding", "interrupt", "build", "addendum", "comment", "correct"],
+    "home_text": ["bidding", "council", "interrupt", "build", "addendum", "comment", "correct"],
     # Voice at home (04 section 7): bid, cut at sentence boundaries, correct.
     "home_voice": ["bidding", "interrupt", "correct", "comment", "hard_cut"],
     # One call writes both voices.
     "duet": ["bidding", "duet", "comment"],
     # Focus or work hours: no spoken cuts, hands and asides only.
-    "focus": ["bidding", "hand", "comment", "hard_cut"],
+    "focus": ["bidding", "council", "hand", "comment", "hard_cut"],
     # Quiet hours.
     "night": ["comment", "hard_cut"],
 }

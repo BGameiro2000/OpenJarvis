@@ -21,11 +21,12 @@ from pathlib import Path
 logger = logging.getLogger("home_jarvis")
 
 FLOOR = None  # the running FloorManager, for introspection
+COUNCIL = None  # the running Council
 SORTER = None  # the running intake Sorter
 
 
 def _start(app) -> None:  # noqa: ANN001
-    global FLOOR, SORTER
+    global FLOOR, SORTER, COUNCIL
     from openjarvis_unraid_hooks import (
         add_routes,
         floor_config_path,
@@ -48,8 +49,13 @@ def _start(app) -> None:  # noqa: ANN001
         vault = Path(os.environ.get("OPENJARVIS_VAULT", "/vault"))
         model = cfg.model or getattr(app.state, "model", "")
         brain = EngineBrain(app.state.engine, model, vault, cfg.review_model)
-    FLOOR = FloorManager(brain, cfg, log)
+    from .council import Council
+    from .council import build_router as build_council_router
+
+    COUNCIL = Council(brain, Path(os.environ.get("OPENJARVIS_VAULT", "/vault")), log)
+    FLOOR = FloorManager(brain, cfg, log, council=COUNCIL)
     add_routes(app, build_router(FLOOR))
+    add_routes(app, build_council_router(COUNCIL))
     logger.info("home_jarvis floor ready: profile %s, modes %s", cfg.profile, cfg.enabled)
     print(
         f"[home_jarvis] floor ready: profile {cfg.profile}, modes {', '.join(cfg.enabled)}"

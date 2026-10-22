@@ -27,7 +27,7 @@ import re
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable
 
 from .brain import Brain
 from .config import FloorConfig
@@ -78,7 +78,9 @@ class FloorManager:
         log: EventLog | None = None,
         *,
         clock: Callable[[], float] = time.time,
+        council: Any = None,
     ) -> None:
+        self.council = council  # home_jarvis.council.Council, or None
         self.brain = brain
         self.config = config
         self.clock = clock
@@ -273,7 +275,8 @@ class FloorManager:
 
         self._set_state(speaker, "THINKING")
         self._set_state(listener, "LISTENING")
-        reply = self.brain.reply(speaker, user_text, st.history)
+        instruction, flags = self._consult(user_text)
+        reply = self.brain.reply(speaker, user_text, st.history, instruction=instruction)
         sentences = split_sentences(reply) or ["..."]
 
         # The listener reviews the whole reply before any of it is released.
@@ -287,7 +290,9 @@ class FloorManager:
             else {"act": "none", "pressure": 0.0}
         )
         signals = self._signals(user_text, reply, listener, named)
-        ctx = TurnContext(user_text, speaker, listener, sentences, review, cfg, named, signals)
+        ctx = TurnContext(
+            user_text, speaker, listener, sentences, review, cfg, named, signals, flags
+        )
         if named == listener and review.get("act") != "none":
             review["pressure"] = 1.0
 
@@ -353,6 +358,21 @@ class FloorManager:
         if chosen:
             self._post_act(chosen, speaker, listener, user_text)
         self._end_turn()
+
+    def _consult(self, user_text: str) -> tuple[str, list[dict]]:
+        """Run the council on a decision question when the mode is on."""
+        if not (self.council and self.config.has("council")):
+            return "", []
+        from .council import advice, wants_council
+
+        if not wants_council(user_text):
+            return "", []
+        try:
+            rec = self.council.run(user_text)
+        except Exception as exc:  # noqa: BLE001  (an advisory step never breaks the turn)
+            self._emit("turn", text=f"council failed: {type(exc).__name__}", data={"phase": "note"})
+            return "", []
+        return advice(rec), rec["verdict"].get("flags", [])
 
     # ------------------------------------------------------------- helpers
     def _signals(self, user_text: str, reply: str, listener: str, named: str) -> dict:
