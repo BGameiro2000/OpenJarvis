@@ -5,6 +5,9 @@ Load in the OpenJarvis container with ``OPENJARVIS_CUSTOM_MODULES=home_jarvis``
 the floor manager with the server's engine and event bus and mounts its routes
 under ``/api/custom/floor``. Config: ``/data/custom/floor.toml``.
 
+It also builds the intake sorter (``home_jarvis.intake``) over the vault and
+mounts it under ``/api/custom/intake``. Config: ``/data/custom/intake.toml``.
+
 ``HOME_JARVIS_DEMO=1`` uses a scripted brain instead of the model (no key, no
 cost), for the HUD and for tests.
 """
@@ -18,10 +21,11 @@ from pathlib import Path
 logger = logging.getLogger("home_jarvis")
 
 FLOOR = None  # the running FloorManager, for introspection
+SORTER = None  # the running intake Sorter
 
 
 def _start(app) -> None:  # noqa: ANN001
-    global FLOOR
+    global FLOOR, SORTER
     from openjarvis_unraid_hooks import (
         add_routes,
         floor_config_path,
@@ -52,6 +56,19 @@ def _start(app) -> None:  # noqa: ANN001
         + (" (DEMO brain)" if os.environ.get("HOME_JARVIS_DEMO") else ""),
         flush=True,
     )
+    try:
+        from .intake import build_sorter, demo_mode
+        from .intake.routes import build_router as build_intake_router
+
+        SORTER = build_sorter(app, log)
+        add_routes(app, build_intake_router(SORTER, log))
+        print(
+            f"[home_jarvis] intake ready: vault {SORTER.vault}, "
+            f"dry_run {SORTER.config.dry_run}" + (" (DEMO classifier)" if demo_mode() else ""),
+            flush=True,
+        )
+    except Exception:  # noqa: BLE001  (a broken intake.toml must not stop the floor)
+        logger.exception("home_jarvis intake failed to start")
 
 
 try:
