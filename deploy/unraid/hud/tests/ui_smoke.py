@@ -61,6 +61,46 @@ def main() -> int:
         if XSS not in page.locator("h1").inner_text():
             problems.append("HTML in text was not shown as text")
 
+        # Memory: hybrid search, tags, graph, inspector
+        page.goto(URL + "/#/memory")
+        page.fill("input[aria-label='Search memory']", "RAM upgrade")
+        page.click("form.bar button[type=submit]")
+        page.wait_for_selector(".hit", timeout=10000)
+        tags = set(page.locator(".hit .tag").all_inner_texts())
+        if "BOTH" not in tags:
+            problems.append(f"no BOTH tag in hybrid search: {tags}")
+        page.wait_for_selector(".graph canvas", timeout=10000)
+        page.wait_for_selector(".insp h2", timeout=10000)
+        page.screenshot(path=str(OUT / "hud-memory.png"))
+        page.fill("input[aria-label='Search memory']", "note tries to run code")
+        page.click("form.bar button[type=submit]")
+        page.wait_for_selector(".insp .body", timeout=10000)
+        time.sleep(0.5)
+
+        # Intake: dry run, apply, escalations, HTML stays text
+        page.on("dialog", lambda d: d.accept())
+        page.goto(URL + "/#/intake")
+        page.wait_for_selector(".escal .cards", timeout=10000)
+        page.get_by_role("button", name="Dry run now").click()
+        page.wait_for_selector(".pipe .row:not(.hdr)", timeout=10000)
+        page.screenshot(path=str(OUT / "hud-intake.png"), full_page=True)
+        if "<script>" not in page.locator(".escal").inner_text():
+            problems.append("note with markup not shown as text on the intake board")
+        page.get_by_role("button", name="Apply", exact=True).click()
+        page.wait_for_selector("text=Applied", timeout=10000)
+
+        # Council: replay and a new run
+        page.goto(URL + "/#/council/2026-10-21-0381")
+        page.wait_for_selector(".dec", timeout=10000)
+        if page.locator(".dec").inner_text() != "WAIT":
+            problems.append("council replay verdict is not WAIT")
+        if page.locator(".god.called").count() != 3:
+            problems.append(f"expected 3 called cards, got {page.locator('.god.called').count()}")
+        time.sleep(3)
+        page.screenshot(path=str(OUT / "hud-council.png"), full_page=True)
+
+        page.goto(URL + "/")
+        page.wait_for_selector(".conn.live", timeout=10000)
         page.emulate_media(reduced_motion="reduce")
         anim = page.evaluate(
             "getComputedStyle(document.querySelector('.box .c')).animationName"

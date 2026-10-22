@@ -1,0 +1,2 @@
+/* Cytoscape looks for this stylesheet id and, finding it, injects no inline style (blocked by the CSP). */
+.__________cytoscape_container { position: relative; }

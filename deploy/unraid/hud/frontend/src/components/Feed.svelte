@@ -1,6 +1,7 @@
 <script>
   import Box from './Box.svelte';
   import { hud, live, floorAction } from '../lib/hud.svelte.js';
+  import { href } from '../lib/route.svelte.js';
 
   let scroller = $state();
   let subject = $derived(hud.subject);
@@ -27,7 +28,14 @@
       <h1>{subject ? subject.text : 'Waiting for Bernardo'}</h1>
       <div class="meta">
         {#if subject}held by {holder.toUpperCase()} · turn {subject.turn}{subject.profile ? ` · profile ${subject.profile}` : ''}{/if}
-        <span class="council">COUNCIL 0 / 7 · not wired yet</span>
+        {#if hud.council.sim}
+          <span class="council">
+            COUNCIL {new Set(hud.council.called.map((g) => (g === 'ate' ? 'ananke' : g))).size} / 7 CONSULTED{#if hud.council.verdict} · VERDICT {hud.council.verdict.decision} · {hud.council.verdict.confidence?.toFixed(2)}{/if}
+            · <a href={href('council', hud.council.sim)}>Open simulation</a>
+          </span>
+        {:else}
+          <span class="council faint">COUNCIL NOT CONSULTED</span>
+        {/if}
       </div>
     </Box>
   {/key}
@@ -69,6 +77,7 @@
   }
   .meta { color: var(--muted); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .council { color: var(--council); font-size: var(--label); letter-spacing: var(--track); }
+  .council.faint { color: var(--faint); }
   .rows { flex: 1; overflow-y: auto; min-height: 0; padding-right: 8px; }
   .row {
     display: grid; grid-template-columns: 84px 170px 1fr; gap: 16px; padding: 10px 0;

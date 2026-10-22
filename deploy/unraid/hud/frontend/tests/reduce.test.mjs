@@ -58,3 +58,19 @@ test('codes are six characters at most', () => {
     apply(st, ev(k, { speaker: 'root', text: 'x', data: {} }));
   for (const l of st.log) assert.ok(l.code.length <= 6, l.code);
 });
+
+test('council and intake events reach the log and the chips', () => {
+  const st = initial();
+  apply(st, ev('consult', { text: 'q', data: { sim: 's1', called: ['tyche', 'ate'] } }));
+  apply(st, ev('position', { speaker: 'tyche', data: { round: 1, stance: 'for', confidence: 0.62 } }));
+  apply(st, ev('position', { speaker: 'ate', data: { round: 1, stance: 'flag', confidence: 0.74 } }));
+  apply(st, ev('verdict', { text: 'Wait.', data: { decision: 'WAIT', confidence: 0.78, dissent: [{ god: 'tyche' }] } }));
+  assert.deepEqual(st.council.stances, { tyche: 'for', ate: 'flag' });
+  assert.equal(st.council.verdict.decision, 'WAIT');
+  assert.deepEqual(st.council.dissent, ['tyche']);
+  apply(st, ev('route', { text: 'gtd_action · 0.91 · next-actions.md', data: { source: 'a.md' } }));
+  apply(st, ev('escalate', { text: 'needs a transcript', data: { source: 'v.m4a' } }));
+  apply(st, ev('file', { text: 'gtd/next-actions.md', data: { source: 'a.md' } }));
+  assert.deepEqual(st.log.slice(0, 3).map((l) => l.code), ['FILE', 'ESCAL', 'ROUTE']);
+  assert.equal(st.intakeTick, 3);
+});

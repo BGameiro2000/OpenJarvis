@@ -41,6 +41,9 @@ export function initial() {
     holder: 'finch',
     hand: null,
     lastConfig: null,
+    // Latest council simulation, for the footer chips and the subject box.
+    council: { sim: '', called: [], stances: {}, verdict: null, dissent: [] },
+    intakeTick: 0,
   };
 }
 
@@ -175,6 +178,41 @@ export function apply(st, ev, threshold = 0.7) {
       const code = d.mute || d.unmute || 'minutes' in d ? 'MUTE' : 'FLOOR';
       addLog(st, ev, code, who || d.who || 'hud', ev.text || `profile ${d.profile}`);
       st.lastConfig = key;
+      return true;
+    }
+    case 'consult': {
+      st.council = { sim: d.sim || '', called: d.called || [], stances: {}, verdict: null, dissent: [], router: d.router || [] };
+      addLog(st, ev, 'COUNCIL', 'router', `${(d.called || []).join(' · ') || 'nobody'} called`, 'council');
+      return true;
+    }
+    case 'position': {
+      st.council.stances[who] = d.stance;
+      addLog(st, ev, 'COUNCIL', who, `r${d.round ?? '?'} · ${d.stance} · ${pct(d.confidence)}`, 'council');
+      return true;
+    }
+    case 'verdict': {
+      st.council.verdict = { decision: d.decision, confidence: d.confidence, summary: ev.text || d.summary };
+      st.council.dissent = (d.dissent || []).map((x) => x.god);
+      addLog(st, ev, 'VERDICT', 'council', `${d.decision} · conf ${pct(d.confidence)}${st.council.dissent.length ? ' · dissent ' + st.council.dissent.join(', ') : ''}`, 'council');
+      return true;
+    }
+    case 'council_saved': {
+      addLog(st, ev, 'FILE', 'council', d.path || d.sim, 'filed');
+      return true;
+    }
+    case 'route': {
+      addLog(st, ev, 'ROUTE', d.source || 'intake', `${ev.text || d.route}${d.dry_run ? ' · dry run' : ''}`, d.dry_run ? 'faint' : 'filed');
+      st.intakeTick++;
+      return true;
+    }
+    case 'escalate': {
+      addLog(st, ev, 'ESCAL', d.source || 'intake', `${ev.text || 'needs a human'}${d.dry_run ? ' · dry run' : ''}`, 'alert');
+      st.intakeTick++;
+      return true;
+    }
+    case 'file': {
+      addLog(st, ev, 'FILE', d.source || 'sorter', ev.text || '', 'filed');
+      st.intakeTick++;
       return true;
     }
     case 'error': {

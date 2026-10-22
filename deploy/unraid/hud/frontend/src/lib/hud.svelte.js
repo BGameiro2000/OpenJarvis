@@ -10,10 +10,13 @@ export const live = $state({
   now: Date.now(),
   sending: false,
   error: '',
+  draft: '',
+  intake: null,
 });
 
 function handle(ev) {
   apply(hud, ev, live.floor?.threshold ?? 0.7);
+  if (['route', 'escalate', 'file'].includes(ev.kind)) refreshIntakeSoon();
   if (ev.kind === 'config' || ev.kind === 'hand' || (ev.kind === 'turn' && ev.data?.phase === 'end')) refreshFloor();
 }
 
@@ -22,6 +25,21 @@ async function getJSON(url, opts) {
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.detail || `${r.status}`);
   return body;
+}
+
+let intakeTimer;
+function refreshIntakeSoon() {
+  clearTimeout(intakeTimer);
+  intakeTimer = setTimeout(refreshIntake, 600);
+}
+
+export async function refreshIntake() {
+  try {
+    const b = await getJSON('/api/intake');
+    live.intake = b.summary;
+  } catch {
+    live.intake = null;
+  }
 }
 
 export async function refreshStatus() {
@@ -68,6 +86,8 @@ export function connect() {
   setInterval(() => (live.now = Date.now()), 1000);
   refreshStatus();
   setInterval(refreshStatus, 10000);
+  refreshIntake();
+  setInterval(refreshIntake, 30000);
 }
 
 // The chat response streams the same events; they are applied too and

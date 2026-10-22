@@ -1,5 +1,6 @@
 <script>
   import { live } from '../lib/hud.svelte.js';
+  import { nav, href, VIEWS } from '../lib/route.svelte.js';
   const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
   const two = (n) => String(n).padStart(2, '0');
   let d = $derived(new Date(live.now));
@@ -19,6 +20,11 @@
     <span class="where">/ HOME NODE · UNRAID</span>
     {#if st.mode === 'demo'}<span class="demo">DEMO · SCRIPTED</span>{/if}
   </div>
+  <nav aria-label="Views">
+    {#each VIEWS as v}
+      <a href={href(v)} class:on={nav.view === v} aria-current={nav.view === v ? 'page' : undefined}>{v.toUpperCase()}</a>
+    {/each}
+  </nav>
   <div class="facts">
     <span><i>ASSET 001</i> {(st.owner || 'Bernardo').toUpperCase()}</span>
     <span><i>{date}</i> {time}</span>
@@ -42,6 +48,13 @@
   .name { font-family: var(--cond); font-weight: 700; font-size: 16px; letter-spacing: 0.32em; }
   .where { color: var(--muted); letter-spacing: 0.08em; }
   .demo { color: var(--council); border: 1px solid var(--council); padding: 2px 6px; font-size: var(--label); letter-spacing: var(--track); }
+  nav { display: flex; gap: 4px; }
+  nav a {
+    color: var(--muted); text-decoration: none; letter-spacing: var(--track); font-size: var(--label);
+    padding: 0 12px; min-height: 36px; display: inline-flex; align-items: center; border: 1px solid transparent;
+  }
+  nav a:hover { color: var(--text); }
+  nav a.on { color: var(--finch); border-color: var(--rule); }
   .facts { display: flex; gap: 18px; flex-wrap: wrap; letter-spacing: 0.02em; }
   i { font-style: normal; color: var(--muted); }
   b { font-weight: 400; }
@@ -57,5 +70,7 @@
     .name { font-size: 14px; letter-spacing: 0.24em; }
     .facts { gap: 12px; font-size: var(--label); }
     .facts span:nth-child(-n + 2), .facts span:nth-child(5) { display: none; }
+    nav { order: 3; width: 100%; overflow-x: auto; }
+    nav a { padding: 0 8px; }
   }
 </style>
