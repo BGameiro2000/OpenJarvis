@@ -1,0 +1,68 @@
+# Copy to /data/custom/intake.toml (on Unraid: /mnt/cache/appdata/openjarvis/custom/intake.toml).
+# Every key is optional; these are the defaults. The file is read again on every
+# scan, so a change needs no restart.
+
+dry_run = true            # a scan only plans; apply with --apply, the HUD button, or set false
+min_confidence = 0.60     # classifier answers below this escalate
+classifier_model = ""     # cheap model for the classifier ("" = the server model)
+classify_ai_chats = false # true: AI conversations go to the classifier (title and first turn)
+
+# The closed list menu. The classifier sees it word for word and may only answer
+# with one of these file names. A list lives at <folder>/<list> in the vault.
+# Leave out every [[lists]] to use this built-in menu. Routes: project_shaped,
+# gtd_action, idea_capture, reference.
+
+[[lists]]
+list = "next-actions.md"
+route = "gtd_action"
+folder = "gtd"
+scope = "single next steps Bernardo can do himself"
+
+[[lists]]
+list = "waiting-for.md"
+route = "gtd_action"
+folder = "gtd"
+scope = "things Bernardo waits on from someone else"
+
+[[lists]]
+list = "someday.md"
+route = "gtd_action"
+folder = "gtd"
+scope = "actions worth keeping but not now"
+
+[[lists]]
+list = "backlog.md"
+route = "idea_capture"
+folder = "ideas"
+scope = "feature ideas for an existing project"
+
+[[lists]]
+list = "ideas.md"
+route = "idea_capture"
+folder = "ideas"
+scope = "loose ideas not tied to a project"
+
+[[lists]]
+list = "potential-projects.md"
+route = "project_shaped"
+folder = "potential_projects"
+scope = "outcomes that need more than one step"
+
+[[lists]]
+list = "reference.md"
+route = "reference"
+folder = "reference"
+scope = "facts and notes to keep, no action"
+
+# The two lists the rules use. Keep them: without them chats escalate.
+[[lists]]
+list = "chats.md"
+route = "reference"
+folder = "reference"
+scope = "chats with people"
+
+[[lists]]
+list = "ai-chats.md"
+route = "reference"
+folder = "reference"
+scope = "conversations with AI assistants"

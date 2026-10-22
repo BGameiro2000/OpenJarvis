@@ -41,12 +41,32 @@ decision, including blocked ones (`suppressed`), is a floor event.
 - `GET /state`, `POST /config` (profile or modes), `POST /mute`, `POST /unmute`,
   `POST /grant`, `POST /feedback`.
 
+## Intake (`/api/custom/intake`)
+
+`home_jarvis.intake` sorts what lands in the vault's `inbox/`: notes, WhatsApp
+and Telegram exports, Claude and ChatGPT exports, zips, audio. Chats are filed
+by rule (chats with people are never sent to a model); notes and transcripts
+go to a cheap classifier with a closed list menu; every answer is checked in
+code, and anything that fails stays in the inbox as an escalation. Dry run is
+the default. Config: `/data/custom/intake.toml` (see `intake.example.toml`).
+
+```
+docker exec openjarvis python -m home_jarvis.intake scan            # plan only
+docker exec openjarvis python -m home_jarvis.intake scan --apply    # file it
+```
+
+Routes: `GET /state`, `POST /scan`, `POST /capture`, `POST /decide`,
+`GET /log`. The vault is `$OPENJARVIS_VAULT` (default `/vault`). Full guide,
+including the Cognee exclusion for `reference/chats` and how to turn on
+transcription: `docs/INTAKE.md`.
+
 ## Demo and tests
 
 `HOME_JARVIS_DEMO=1` swaps the model for a scripted brain with one scenario per
 mode (GPU question for interrupt, paper for build, reminder for addendum,
 deadline for correct, weather for comment, job offer for hand). No key, no
-cost. The HUD uses it.
+cost. The HUD uses it. It (or `HUD=1`) also gives the intake sorter a keyword
+classifier instead of the model.
 
 ```
 cd home-jarvis
